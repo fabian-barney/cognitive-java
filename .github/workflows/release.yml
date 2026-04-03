@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  publish:
+    name: Publish Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+
+      - name: Verify release version
+        shell: bash
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          pom_version="$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)"
+          chmod +x gradle-plugin/gradlew
+          gradle_version="$(cd gradle-plugin && ./gradlew -q properties | awk -F': ' '/^version:/ {print $2; exit}')"
+          test "${pom_version}" = "${tag_version}"
+          test "${gradle_version}" = "${tag_version}"
+
+      - name: Publish Maven artifacts
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -B -pl cli,maven-plugin -am deploy
+
+      - name: Publish Gradle plugin artifacts
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: gradle-plugin
+        run: ./gradlew publish
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cat > release-notes.md <<EOF
+          ## Artifacts
+
+          - \`media.barney:cognitive-java-core:${version}\`
+          - \`media.barney:cognitive-java-cli:${version}\`
+          - \`media.barney:cognitive-java-maven-plugin:${version}\`
+          - Gradle plugin id \`media.barney.cognitive-java\` version \`${version}\`
+          EOF
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release edit "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes-file release-notes.md
+          else
+            gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes-file release-notes.md
+          fi

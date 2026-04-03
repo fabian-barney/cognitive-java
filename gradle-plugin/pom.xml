@@ -1,0 +1,16 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>media.barney</groupId>
+    <artifactId>cognitive-java-parent</artifactId>
+    <version>0.2.0</version>
+  </parent>
+
+  <packaging>pom</packaging>
+  <artifactId>cognitive-java-gradle-plugin-build</artifactId>
+  <name>cognitive-java Gradle Plugin</name>
+  <description>Wrapper module for the self-contained Gradle plugin build in gradle-plugin/.</description>
+</project>

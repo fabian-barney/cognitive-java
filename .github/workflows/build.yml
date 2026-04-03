@@ -1,0 +1,71 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  core-and-cli:
+    name: Core and CLI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Build CLI and run core tests
+        run: mvn -B -pl cli -am package
+
+  gradle-plugin:
+    name: Gradle Plugin
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Package core jar
+        run: mvn -B -pl core -am package
+
+      - name: Set up Gradle wrapper permissions
+        run: chmod +x gradle-plugin/gradlew
+
+      - name: Run Gradle plugin functional tests
+        working-directory: gradle-plugin
+        run: ./gradlew test
+
+  maven-plugin:
+    name: Maven Plugin
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Run Maven plugin integration tests
+        run: mvn -B -pl maven-plugin -am verify
