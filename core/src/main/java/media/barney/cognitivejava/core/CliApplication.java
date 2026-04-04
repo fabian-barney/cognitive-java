@@ -83,6 +83,9 @@ final class CliApplication {
         Set<Path> files = new LinkedHashSet<>();
         for (String arg : args) {
             Path path = projectRoot.resolve(arg).normalize();
+            if (!Files.exists(path)) {
+                throw new IllegalArgumentException("Path does not exist: " + arg);
+            }
             if (Files.isDirectory(path)) {
                 files.addAll(SourceFileFinder.findAllJavaFilesUnderSourceRoots(path));
             } else {

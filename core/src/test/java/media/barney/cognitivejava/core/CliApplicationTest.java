@@ -124,6 +124,57 @@ class CliApplicationTest {
         assertTrue(CliApplication.thresholdExceeded(26));
     }
 
+    @Test
+    void syntaxErrorsFailAnalysis() throws Exception {
+        Path sourceRoot = tempDir.resolve("src/main/java/demo");
+        Files.createDirectories(sourceRoot);
+        Files.writeString(sourceRoot.resolve("Broken.java"), """
+                package demo;
+
+                class Broken {
+                    int alpha(boolean value) {
+                        if (value) {
+                            return 1;
+                        // missing closing braces
+                """);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
+                .execute(new String[]{"src/main/java/demo/Broken.java"});
+
+        assertEquals(1, exit);
+        assertFalse(utf8(out).contains("Cognitive Complexity Report"));
+        assertTrue(utf8(err).contains("Broken.java"));
+    }
+
+    @Test
+    void missingExplicitFileFailsFast() throws Exception {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
+                .execute(new String[]{"src/main/java/demo/Missing.java"});
+
+        assertEquals(1, exit);
+        assertFalse(utf8(out).contains("Cognitive Complexity Report"));
+        assertTrue(utf8(err).contains("Path does not exist"));
+    }
+
+    @Test
+    void missingExplicitDirectoryFailsFast() throws Exception {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
+                .execute(new String[]{"module-a"});
+
+        assertEquals(1, exit);
+        assertFalse(utf8(out).contains("Cognitive Complexity Report"));
+        assertTrue(utf8(err).contains("Path does not exist"));
+    }
+
     private static String nestedIfSource(int count) {
         StringBuilder builder = new StringBuilder();
         builder.append("package demo;\n\nclass Sample {\n");

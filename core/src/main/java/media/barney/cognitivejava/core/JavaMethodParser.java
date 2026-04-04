@@ -33,14 +33,19 @@ import com.sun.source.util.Trees;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import javax.tools.Diagnostic;
+import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
+import javax.tools.JavaFileObject;
 import javax.tools.SimpleJavaFileObject;
 import javax.tools.ToolProvider;
 import org.jspecify.annotations.Nullable;
@@ -76,15 +81,22 @@ final class JavaMethodParser {
         }
 
         try {
+            DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
             JavacTask task = (JavacTask) compiler.getTask(
                     null,
                     null,
-                    null,
+                    diagnostics,
                     List.of("-proc:none"),
                     null,
                     List.of(new SourceFileObject(sourceName, source))
             );
             Iterable<? extends CompilationUnitTree> units = task.parse();
+            List<Diagnostic<? extends JavaFileObject>> errors = diagnostics.getDiagnostics().stream()
+                    .filter(diagnostic -> diagnostic.getKind() == Diagnostic.Kind.ERROR)
+                    .toList();
+            if (!errors.isEmpty()) {
+                throw new IllegalArgumentException(formatDiagnostics(errors));
+            }
             return collectMethods(task, units);
         } catch (IOException ex) {
             throw new UncheckedIOException(ex);
@@ -155,6 +167,7 @@ final class JavaMethodParser {
             long bodyEndExclusive = positions.getEndPosition(unit, node.getBody());
             MethodAnalysis analysis = MethodAnalysisScanner.analyze(node, currentClassName());
             methods.add(new ParsedMethod(
+                    packageName,
                     currentClassName(),
                     node.getName().toString(),
                     node.getParameters().size(),
@@ -427,7 +440,7 @@ final class JavaMethodParser {
         private final String source;
 
         private SourceFileObject(String sourceName, String source) {
-            super(uriFor(sourceName), Kind.SOURCE);
+            super(sourceUriForSourceName(sourceName), Kind.SOURCE);
             this.source = source;
         }
 
@@ -436,8 +449,46 @@ final class JavaMethodParser {
             return source;
         }
 
-        private static URI uriFor(String sourceName) {
-            return sourceUri(sourceName);
+    }
+
+    private static String formatDiagnostics(List<Diagnostic<? extends JavaFileObject>> diagnostics) {
+        StringBuilder builder = new StringBuilder("Failed to parse Java source:");
+        for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics) {
+            builder.append(System.lineSeparator())
+                    .append(formatDiagnostic(diagnostic));
+        }
+        return builder.toString();
+    }
+
+    private static String formatDiagnostic(Diagnostic<? extends JavaFileObject> diagnostic) {
+        String sourceName = diagnostic.getSource() == null ? "<unknown>" : diagnostic.getSource().getName();
+        return "%s:%d:%d: %s".formatted(
+                sourceName,
+                diagnostic.getLineNumber(),
+                diagnostic.getColumnNumber(),
+                diagnostic.getMessage(Locale.ROOT));
+    }
+
+    private static URI sourceUriForSourceName(String sourceName) {
+        if (looksLikePath(sourceName)) {
+            return pathLikeSourceUri(sourceName);
+        }
+        return sourceUri(sourceName);
+    }
+
+    private static boolean looksLikePath(String sourceName) {
+        return sourceName.contains("/")
+                || sourceName.contains("\\")
+                || sourceName.contains(":");
+    }
+
+    private static URI pathLikeSourceUri(String sourceName) {
+        String normalized = sourceName.replace('\\', '/');
+        String path = normalized.startsWith("/") ? normalized : "/" + normalized;
+        try {
+            return new URI("string", null, path, null);
+        } catch (URISyntaxException ex) {
+            throw new IllegalArgumentException("Invalid source name: " + sourceName, ex);
         }
     }
 }

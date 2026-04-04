@@ -22,13 +22,15 @@ final class CognitiveComplexityAnalyzer {
     }
 
     static List<MethodMetrics> analyze(List<Path> files) throws IOException {
-        Map<String, String> sources = new LinkedHashMap<>();
+        List<ParsedMethod> parsedMethods = new ArrayList<>();
         for (Path file : files) {
-            if (Files.exists(file)) {
-                sources.put(file.getFileName().toString(), Files.readString(file));
+            Path normalized = file.normalize();
+            if (!Files.isRegularFile(normalized)) {
+                throw new IllegalArgumentException("Source file does not exist: " + normalized);
             }
+            parsedMethods.addAll(JavaMethodParser.parseDetailed(sourceName(normalized), Files.readString(normalized)));
         }
-        return analyzeSources(sources);
+        return metricsForParsedMethods(parsedMethods);
     }
 
     static List<MethodMetrics> analyzeSources(Map<String, String> sources) {
@@ -104,8 +106,16 @@ final class CognitiveComplexityAnalyzer {
         if (classNames.contains(ownerName)) {
             owners.add(ownerName);
         }
-        owners.addAll(classNamesBySimpleName.getOrDefault(ownerName, Set.of()));
-        owners.addAll(classNamesBySimpleName.getOrDefault(simpleName(ownerName), Set.of()));
+        String samePackageOwner = qualifiedNameInPackage(source.packageName(), ownerName);
+        if (classNames.contains(samePackageOwner)) {
+            owners.add(samePackageOwner);
+        }
+        if (owners.isEmpty() && !ownerName.contains(".")) {
+            Set<String> simpleMatches = classNamesBySimpleName.getOrDefault(ownerName, Set.of());
+            if (simpleMatches.size() == 1) {
+                owners.addAll(simpleMatches);
+            }
+        }
 
         List<ParsedMethod> targets = new ArrayList<>();
         for (String owner : owners) {
@@ -128,6 +138,14 @@ final class CognitiveComplexityAnalyzer {
     private static String simpleName(String className) {
         int separator = className.lastIndexOf('.');
         return separator < 0 ? className : className.substring(separator + 1);
+    }
+
+    private static String qualifiedNameInPackage(String packageName, String className) {
+        return packageName.isEmpty() ? className : packageName + "." + className;
+    }
+
+    private static String sourceName(Path file) {
+        return file.toString().replace('\\', '/');
     }
 
     private static final class Tarjan {

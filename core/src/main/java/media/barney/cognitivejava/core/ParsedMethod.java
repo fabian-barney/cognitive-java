@@ -3,6 +3,7 @@ package media.barney.cognitivejava.core;
 import java.util.List;
 
 record ParsedMethod(
+        String packageName,
         String className,
         String methodName,
         int arity,
