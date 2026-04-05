@@ -37,6 +37,18 @@ Build and test the Maven plugin module, including its invoker integration fixtur
 mvn -B -pl maven-plugin -am verify
 ```
 
+## Shared CRAP Gate
+
+Repository CI also runs the shared `crap-java` gate so this project is checked
+the same way as the other Java repositories in this GitHub account.
+
+The gate resolves the published CLI from Maven Central:
+
+- `media.barney:crap-java-cli:0.3.2`
+
+CI invokes that CLI in Maven mode for `core`, `cli`, and `maven-plugin`, and in
+Gradle mode for `gradle-plugin`.
+
 ## Run
 
 Build the CLI jar:

@@ -2,9 +2,11 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.tasks.Jar
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     `java-gradle-plugin`
+    jacoco
     `maven-publish`
 }
 
@@ -17,6 +19,7 @@ repositories {
 
 val projectVersion = version.toString()
 val coreJar = layout.projectDirectory.file("../core/target/cognitive-java-core-${projectVersion}.jar")
+val jacocoVersion = "0.8.13"
 val githubActor = providers.gradleProperty("gpr.user").orElse(providers.environmentVariable("GITHUB_ACTOR"))
 val githubToken = providers.gradleProperty("gpr.key").orElse(providers.environmentVariable("GITHUB_TOKEN"))
 
@@ -46,6 +49,19 @@ dependencies {
 tasks.withType<Test>().configureEach {
     dependsOn(verifyCoreJar)
     useJUnitPlatform()
+}
+
+tasks.named<JacocoReport>("jacocoTestReport") {
+    dependsOn(tasks.named("test"))
+    reports {
+        xml.required.set(true)
+        csv.required.set(false)
+        html.required.set(false)
+    }
+}
+
+jacoco {
+    toolVersion = jacocoVersion
 }
 
 tasks.named("pluginUnderTestMetadata") {

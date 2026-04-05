@@ -93,37 +93,62 @@ final class CognitiveComplexityAnalyzer {
                                                      Set<String> classNames,
                                                      Map<String, Set<String>> classNamesBySimpleName) {
         if (call.sameClass()) {
-            return declarationsByKey.getOrDefault(
-                    new MethodKey(source.className(), call.methodName(), call.arity()),
-                    List.of());
+            return targetsForOwner(source.className(), call, declarationsByKey);
         }
         String ownerName = call.ownerName();
         if (ownerName == null) {
             return List.of();
         }
 
+        return targetsForOwners(
+                candidateOwners(source.packageName(), ownerName, classNames, classNamesBySimpleName),
+                call,
+                declarationsByKey);
+    }
+
+    private static Set<String> candidateOwners(String packageName,
+                                               String ownerName,
+                                               Set<String> classNames,
+                                               Map<String, Set<String>> classNamesBySimpleName) {
         Set<String> owners = new LinkedHashSet<>();
+        addKnownOwner(owners, ownerName, classNames);
+        addKnownOwner(owners, qualifiedNameInPackage(packageName, ownerName), classNames);
+        addSimpleNameMatch(owners, ownerName, classNamesBySimpleName);
+        return owners;
+    }
+
+    private static void addKnownOwner(Set<String> owners, String ownerName, Set<String> classNames) {
         if (classNames.contains(ownerName)) {
             owners.add(ownerName);
         }
-        String samePackageOwner = qualifiedNameInPackage(source.packageName(), ownerName);
-        if (classNames.contains(samePackageOwner)) {
-            owners.add(samePackageOwner);
-        }
-        if (owners.isEmpty() && !ownerName.contains(".")) {
-            Set<String> simpleMatches = classNamesBySimpleName.getOrDefault(ownerName, Set.of());
-            if (simpleMatches.size() == 1) {
-                owners.addAll(simpleMatches);
-            }
-        }
+    }
 
+    private static void addSimpleNameMatch(Set<String> owners,
+                                           String ownerName,
+                                           Map<String, Set<String>> classNamesBySimpleName) {
+        if (!owners.isEmpty() || ownerName.contains(".")) {
+            return;
+        }
+        Set<String> simpleMatches = classNamesBySimpleName.getOrDefault(ownerName, Set.of());
+        if (simpleMatches.size() == 1) {
+            owners.addAll(simpleMatches);
+        }
+    }
+
+    private static List<ParsedMethod> targetsForOwners(Set<String> owners,
+                                                       MethodCall call,
+                                                       Map<MethodKey, List<ParsedMethod>> declarationsByKey) {
         List<ParsedMethod> targets = new ArrayList<>();
         for (String owner : owners) {
-            targets.addAll(declarationsByKey.getOrDefault(
-                    new MethodKey(owner, call.methodName(), call.arity()),
-                    List.of()));
+            targets.addAll(targetsForOwner(owner, call, declarationsByKey));
         }
         return targets;
+    }
+
+    private static List<ParsedMethod> targetsForOwner(String owner,
+                                                      MethodCall call,
+                                                      Map<MethodKey, List<ParsedMethod>> declarationsByKey) {
+        return declarationsByKey.getOrDefault(new MethodKey(owner, call.methodName(), call.arity()), List.of());
     }
 
     private static Set<String> stronglyConnectedRecursiveMembers(Map<String, Set<String>> edges) {
