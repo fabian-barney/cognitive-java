@@ -98,7 +98,7 @@ gradlePlugin {
     plugins {
         create("cognitive-java") {
             id = "media.barney.cognitive-java"
-            implementationClass = "media.barney.cognitivejava.gradle.CognitiveJavaGradlePlugin"
+            implementationClass = "media.barney.cognitive.gradle.CognitiveJavaGradlePlugin"
             displayName = "cognitive-java Gradle Plugin"
             description = "Registers the cognitive-java-check verification task for Gradle Java projects."
         }
