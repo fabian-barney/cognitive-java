@@ -55,12 +55,23 @@ jobs:
           if grep -q 'BEGIN PGP PRIVATE KEY BLOCK' "$raw_key"; then
             cp "$raw_key" "$normalized_key"
           else
-            base64 --decode "$raw_key" > "$normalized_key"
+            if ! base64 --decode "$raw_key" > "$normalized_key"; then
+              echo "::error::MAVEN_GPG_PRIVATE_KEY is not ASCII-armored and could not be base64-decoded. Ensure the secret contains either an armored PGP private key block or a base64-encoded armored private key."
+              exit 1
+            fi
+            if ! grep -q 'BEGIN PGP PRIVATE KEY BLOCK' "$normalized_key"; then
+              echo "::error::MAVEN_GPG_PRIVATE_KEY was base64-decoded successfully, but the decoded value is not an ASCII-armored PGP private key block. Check for whitespace, line-ending, or encoding issues in the secret."
+              exit 1
+            fi
           fi
+          while IFS= read -r line; do
+            echo "::add-mask::$line"
+          done < "$normalized_key"
+          gpg_env_delimiter="EOF_$(uuidgen)"
           {
-            echo "MAVEN_GPG_PRIVATE_KEY<<EOF"
+            echo "MAVEN_GPG_PRIVATE_KEY<<${gpg_env_delimiter}"
             cat "$normalized_key"
-            echo "EOF"
+            echo "${gpg_env_delimiter}"
           } >> "$GITHUB_ENV"
           gpg --batch --import "$normalized_key"
 
