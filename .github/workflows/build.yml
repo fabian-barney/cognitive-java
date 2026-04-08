@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Set up JDK 17
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
         with:
           distribution: temurin
           java-version: "17"
@@ -33,10 +33,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Set up JDK 17
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
         with:
           distribution: temurin
           java-version: "17"
@@ -58,10 +58,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Set up JDK 17
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
         with:
           distribution: temurin
           java-version: "17"
@@ -70,16 +70,36 @@ jobs:
       - name: Run Maven plugin integration tests
         run: mvn -B -pl maven-plugin -am verify
 
-  crap-java-gate:
-    name: crap-java Gate
+  nullaway-jdk25:
+    name: NullAway JDK 25
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Verify Maven build with NullAway profile
+        run: mvn -B verify
+
+  crap-java-gate:
+    name: crap-java Gate
+    runs-on: ubuntu-latest
+    env:
+      CRAP_JAVA_VERSION: 0.4.1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Set up JDK 17
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
         with:
           distribution: temurin
           java-version: "17"
@@ -88,7 +108,7 @@ jobs:
       - name: Resolve crap-java CLI
         run: >
           mvn -B dependency:copy
-          -Dartifact="media.barney:crap-java-cli:0.3.2:jar"
+          -Dartifact="media.barney:crap-java-cli:${CRAP_JAVA_VERSION}:jar"
           -DoutputDirectory=target/crap-java-gate
 
       - name: Package core jar for Gradle plugin tests
@@ -99,7 +119,7 @@ jobs:
 
       - name: Run Maven crap-java gate
         run: >
-          java -jar target/crap-java-gate/crap-java-cli-0.3.2.jar
+          java -jar target/crap-java-gate/crap-java-cli-${CRAP_JAVA_VERSION}.jar
           --build-tool maven
           core/src/main/java
           cli/src/main/java
@@ -107,6 +127,67 @@ jobs:
 
       - name: Run Gradle crap-java gate
         run: >
-          java -jar target/crap-java-gate/crap-java-cli-0.3.2.jar
+          java -jar target/crap-java-gate/crap-java-cli-${CRAP_JAVA_VERSION}.jar
           --build-tool gradle
           gradle-plugin/src/main/java
+
+  publishing-preflight:
+    name: Publishing Preflight
+    runs-on: ubuntu-latest
+    env:
+      MAVEN_CENTRAL_TOKEN_USERNAME: preflight-token-user
+      MAVEN_CENTRAL_TOKEN_PASSWORD: preflight-token-password
+      MAVEN_GPG_PASSPHRASE: preflight-passphrase
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          server-id: central
+          server-username: MAVEN_CENTRAL_TOKEN_USERNAME
+          server-password: MAVEN_CENTRAL_TOKEN_PASSWORD
+
+      - name: Generate temporary GPG key for signing preflight
+        shell: bash
+        run: |
+          export GNUPGHOME="$(mktemp -d)"
+          echo "GNUPGHOME=${GNUPGHOME}" >> "$GITHUB_ENV"
+          cat > gpg-batch.txt <<EOF
+          Key-Type: RSA
+          Key-Length: 2048
+          Name-Real: cognitive-java preflight
+          Name-Email: preflight@example.com
+          Expire-Date: 0
+          Passphrase: ${MAVEN_GPG_PASSPHRASE}
+          %commit
+          EOF
+          gpg --batch --pinentry-mode loopback --generate-key gpg-batch.txt
+          {
+            echo "MAVEN_GPG_PRIVATE_KEY<<EOF"
+            gpg --batch --pinentry-mode loopback --passphrase "${MAVEN_GPG_PASSPHRASE}" --armor --export-secret-keys preflight@example.com
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Run Maven publishing preflight
+        run: mvn -B -Prelease -Dcentral.skipPublishing=true -pl .,cli,maven-plugin -am deploy
+
+      - name: Set up Gradle wrapper permissions
+        run: chmod +x gradle-plugin/gradlew
+
+      - name: Validate Gradle plugin publication metadata
+        working-directory: gradle-plugin
+        run: ./gradlew test validatePlugins publishToMavenLocal
+
+      - name: Verify legacy package registry references are gone
+        shell: bash
+        run: |
+          if git grep -n -E 'maven\.pkg\.github\.com|gpr\.user|gpr\.key' -- . ':(exclude).github/workflows/build.yml'; then
+            echo "Found banned legacy package-registry references in tracked sources." >&2
+            exit 1
+          fi

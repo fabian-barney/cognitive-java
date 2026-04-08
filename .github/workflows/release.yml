@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  packages: write
 
 jobs:
   publish:
@@ -16,19 +15,22 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
           fetch-depth: 0
 
       - name: Set up JDK 17
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        env:
+          MAVEN_CENTRAL_TOKEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_TOKEN_USERNAME }}
+          MAVEN_CENTRAL_TOKEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASSWORD }}
         with:
           distribution: temurin
           java-version: "17"
           cache: maven
-          server-id: github
-          server-username: GITHUB_ACTOR
-          server-password: GITHUB_TOKEN
+          server-id: central
+          server-username: MAVEN_CENTRAL_TOKEN_USERNAME
+          server-password: MAVEN_CENTRAL_TOKEN_PASSWORD
 
       - name: Verify release version
         shell: bash
@@ -40,18 +42,50 @@ jobs:
           test "${pom_version}" = "${tag_version}"
           test "${gradle_version}" = "${tag_version}"
 
+      - name: Import GPG key
+        env:
+          MAVEN_GPG_PRIVATE_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          export GNUPGHOME="$(mktemp -d)"
+          echo "GNUPGHOME=${GNUPGHOME}" >> "$GITHUB_ENV"
+          printf '%s' "$MAVEN_GPG_PRIVATE_KEY" | gpg --batch --import
+
       - name: Publish Maven artifacts
         env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -B -pl cli,maven-plugin -am deploy
+          MAVEN_CENTRAL_TOKEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_TOKEN_USERNAME }}
+          MAVEN_CENTRAL_TOKEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        run: mvn -B -Prelease -pl .,cli,maven-plugin -am deploy
 
-      - name: Publish Gradle plugin artifacts
+      - name: Publish Gradle plugin artifacts to Maven Central
         env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAVEN_CENTRAL_TOKEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_TOKEN_USERNAME }}
+          MAVEN_CENTRAL_TOKEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASSWORD }}
+          MAVEN_GPG_PRIVATE_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
         working-directory: gradle-plugin
-        run: ./gradlew publish
+        run: ./gradlew publishAllPublicationsToCentralPortalOssrhStagingRepository
+
+      - name: Finalize Gradle plugin Maven Central deployment
+        env:
+          MAVEN_CENTRAL_TOKEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_TOKEN_USERNAME }}
+          MAVEN_CENTRAL_TOKEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASSWORD }}
+        shell: bash
+        run: |
+          auth="$(printf '%s:%s' "${MAVEN_CENTRAL_TOKEN_USERNAME}" "${MAVEN_CENTRAL_TOKEN_PASSWORD}" | base64 -w 0)"
+          curl --fail --request POST \
+            --header "Authorization: Bearer ${auth}" \
+            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/media.barney?publishing_type=automatic"
+
+      - name: Publish Gradle plugin
+        env:
+          GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
+          GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
+          MAVEN_GPG_PRIVATE_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        working-directory: gradle-plugin
+        run: ./gradlew publishPlugins -Pgradle.publish.key="${GRADLE_PUBLISH_KEY}" -Pgradle.publish.secret="${GRADLE_PUBLISH_SECRET}"
 
       - name: Create GitHub release
         env:
@@ -59,14 +93,23 @@ jobs:
         shell: bash
         run: |
           version="${GITHUB_REF_NAME#v}"
-          cat > release-notes.md <<EOF
-          ## Artifacts
-
-          - \`media.barney:cognitive-java-core:${version}\`
-          - \`media.barney:cognitive-java-cli:${version}\`
-          - \`media.barney:cognitive-java-maven-plugin:${version}\`
-          - Gradle plugin id \`media.barney.cognitive-java\` version \`${version}\`
-          EOF
+          awk -v version="${version}" '
+            $1 == "##" && $2 == version {
+              found = 1
+            }
+            found {
+              if ($1 == "##" && $2 != version) {
+                exit
+              }
+              print
+            }
+            END {
+              if (!found) {
+                exit 1
+              }
+            }
+          ' CHANGELOG.md > release-notes.md
+          test -s release-notes.md
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
             gh release edit "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes-file release-notes.md
           else

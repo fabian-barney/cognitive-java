@@ -1,16 +1,39 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         child.project.url.inherit.append.path="false"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>media.barney</groupId>
   <artifactId>cognitive-java-parent</artifactId>
-  <version>0.2.0</version>
+  <version>0.3.0</version>
   <packaging>pom</packaging>
 
   <name>cognitive-java Parent</name>
   <description>Shared Cognitive Complexity tooling for Java projects.</description>
   <url>https://github.com/fabian-barney/cognitive-java</url>
+  <licenses>
+    <license>
+      <name>Apache License 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <id>fabian-barney</id>
+      <name>Fabian Barney</name>
+      <url>https://github.com/fabian-barney</url>
+    </developer>
+  </developers>
+  <scm child.scm.connection.inherit.append.path="false"
+       child.scm.developerConnection.inherit.append.path="false"
+       child.scm.url.inherit.append.path="false">
+    <connection>scm:git:https://github.com/fabian-barney/cognitive-java.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/fabian-barney/cognitive-java.git</developerConnection>
+    <url>https://github.com/fabian-barney/cognitive-java</url>
+    <tag>HEAD</tag>
+  </scm>
 
   <modules>
     <module>core</module>
@@ -26,6 +49,11 @@
     <jspecify.version>1.0.0</jspecify.version>
     <errorprone.version>2.48.0</errorprone.version>
     <nullaway.version>0.13.1</nullaway.version>
+    <maven.source.plugin.version>3.3.1</maven.source.plugin.version>
+    <maven.javadoc.plugin.version>3.6.3</maven.javadoc.plugin.version>
+    <maven.gpg.plugin.version>3.2.4</maven.gpg.plugin.version>
+    <central.publishing.plugin.version>0.9.0</central.publishing.plugin.version>
+    <central.skipPublishing>false</central.skipPublishing>
   </properties>
 
   <dependencyManagement>
@@ -45,14 +73,6 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
-
-  <distributionManagement>
-    <repository>
-      <id>github</id>
-      <name>GitHub Packages</name>
-      <url>https://maven.pkg.github.com/fabian-barney/cognitive-java</url>
-    </repository>
-  </distributionManagement>
 
   <build>
     <plugins>
@@ -89,6 +109,21 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
           <version>3.6.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-source-plugin</artifactId>
+          <version>${maven.source.plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>${maven.javadoc.plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-gpg-plugin</artifactId>
+          <version>${maven.gpg.plugin.version}</version>
         </plugin>
       </plugins>
     </pluginManagement>
@@ -136,6 +171,74 @@
                   <version>${nullaway.version}</version>
                 </path>
               </annotationProcessorPaths>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <configuration>
+              <failOnError>false</failOnError>
+            </configuration>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <configuration>
+              <passphrase>${env.MAVEN_GPG_PASSPHRASE}</passphrase>
+              <gpgArguments>
+                <arg>--pinentry-mode</arg>
+                <arg>loopback</arg>
+              </gpgArguments>
+            </configuration>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>${central.publishing.plugin.version}</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <autoPublish>true</autoPublish>
+              <waitUntil>published</waitUntil>
+              <skipPublishing>${central.skipPublishing}</skipPublishing>
             </configuration>
           </plugin>
         </plugins>

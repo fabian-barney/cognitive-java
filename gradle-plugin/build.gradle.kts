@@ -1,36 +1,67 @@
-import org.gradle.api.tasks.testing.Test
-import org.gradle.api.tasks.compile.JavaCompile
-import org.gradle.jvm.tasks.Jar
+import org.gradle.api.DefaultTask
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.Optional
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.testing.Test
+import org.gradle.jvm.tasks.Jar
+import org.gradle.plugin.compatibility.compatibility
+import org.gradle.plugins.signing.Sign
 import org.gradle.testing.jacoco.tasks.JacocoReport
+import org.gradle.work.DisableCachingByDefault
 
 plugins {
     `java-gradle-plugin`
+    id("com.gradle.plugin-publish") version "2.1.1"
     jacoco
-    `maven-publish`
+    signing
 }
 
 group = "media.barney"
-version = "0.2.0"
+version = "0.3.0"
 
 repositories {
     mavenCentral()
 }
 
-val projectVersion = version.toString()
-val coreJar = layout.projectDirectory.file("../core/target/cognitive-java-core-${projectVersion}.jar")
-val jacocoVersion = "0.8.13"
-val githubActor = providers.gradleProperty("gpr.user").orElse(providers.environmentVariable("GITHUB_ACTOR"))
-val githubToken = providers.gradleProperty("gpr.key").orElse(providers.environmentVariable("GITHUB_TOKEN"))
+@DisableCachingByDefault(because = "Validates that the Maven-built core jar exists.")
+abstract class VerifyCoreJarTask : DefaultTask() {
+    @get:InputFile
+    @get:Optional
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val coreJar: RegularFileProperty
 
-val verifyCoreJar = tasks.register("verifyCoreJar") {
-    doLast {
-        if (!coreJar.asFile.exists()) {
+    @TaskAction
+    fun verify() {
+        val jar = coreJar.orNull?.asFile
+            ?: throw GradleException("Missing configured core jar path. Run `mvn -pl core -am package` from the repository root first.")
+        if (!jar.exists()) {
             throw GradleException(
-                "Missing ${coreJar.asFile}. Run `mvn -pl core -am package` from the repository root first."
+                "Missing $jar. Run `mvn -pl core -am package` from the repository root first."
             )
         }
     }
+}
+
+val projectVersion = version.toString()
+val coreJar = layout.projectDirectory.file("../core/target/cognitive-java-core-${projectVersion}.jar")
+val gpgPrivateKey = providers.environmentVariable("MAVEN_GPG_PRIVATE_KEY")
+val gpgPassphrase = providers.environmentVariable("MAVEN_GPG_PASSPHRASE")
+val mavenCentralTokenUsername = providers.gradleProperty("mavenCentralTokenUsername")
+    .orElse(providers.environmentVariable("MAVEN_CENTRAL_TOKEN_USERNAME"))
+val mavenCentralTokenPassword = providers.gradleProperty("mavenCentralTokenPassword")
+    .orElse(providers.environmentVariable("MAVEN_CENTRAL_TOKEN_PASSWORD"))
+
+jacoco {
+    toolVersion = "0.8.13"
+}
+
+val verifyCoreJar = tasks.register<VerifyCoreJarTask>("verifyCoreJar") {
+    coreJar.set(layout.projectDirectory.file("../core/target/cognitive-java-core-${projectVersion}.jar"))
 }
 
 tasks.withType<JavaCompile>().configureEach {
@@ -60,10 +91,6 @@ tasks.named<JacocoReport>("jacocoTestReport") {
     }
 }
 
-jacoco {
-    toolVersion = jacocoVersion
-}
-
 tasks.named("pluginUnderTestMetadata") {
     dependsOn(verifyCoreJar)
 }
@@ -75,32 +102,73 @@ tasks.named<Jar>("jar") {
 }
 
 publishing {
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/fabian-barney/cognitive-java")
-            credentials {
-                username = githubActor.orNull
-                password = githubToken.orNull
-            }
-        }
-    }
     publications.withType<MavenPublication>().configureEach {
         pom {
             name.set("cognitive-java Gradle Plugin")
             description.set("Gradle plugin exposing the cognitive-java-check verification task.")
             url.set("https://github.com/fabian-barney/cognitive-java")
+            licenses {
+                license {
+                    name.set("Apache License 2.0")
+                    url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                    distribution.set("repo")
+                }
+            }
+            developers {
+                developer {
+                    id.set("fabian-barney")
+                    name.set("Fabian Barney")
+                    url.set("https://github.com/fabian-barney")
+                }
+            }
+            scm {
+                connection.set("scm:git:https://github.com/fabian-barney/cognitive-java.git")
+                developerConnection.set("scm:git:ssh://git@github.com/fabian-barney/cognitive-java.git")
+                url.set("https://github.com/fabian-barney/cognitive-java")
+            }
+        }
+    }
+    if (mavenCentralTokenUsername.isPresent && mavenCentralTokenPassword.isPresent) {
+        repositories {
+            maven {
+                name = "centralPortalOssrhStaging"
+                url = uri("https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/")
+                credentials {
+                    username = mavenCentralTokenUsername.get()
+                    password = mavenCentralTokenPassword.get()
+                }
+            }
         }
     }
 }
 
+signing {
+    val key = gpgPrivateKey.orNull
+    if (!key.isNullOrBlank()) {
+        useInMemoryPgpKeys(key, gpgPassphrase.orNull)
+        sign(publishing.publications)
+    }
+}
+
+tasks.withType<Sign>().configureEach {
+    onlyIf { !gpgPrivateKey.orNull.isNullOrBlank() }
+}
+
 gradlePlugin {
+    website.set("https://github.com/fabian-barney/cognitive-java")
+    vcsUrl.set("https://github.com/fabian-barney/cognitive-java")
     plugins {
         create("cognitive-java") {
             id = "media.barney.cognitive-java"
             implementationClass = "media.barney.cognitive.gradle.CognitiveJavaGradlePlugin"
             displayName = "cognitive-java Gradle Plugin"
             description = "Registers the cognitive-java-check verification task for Gradle Java projects."
+            tags.set(listOf("java", "quality", "complexity", "verification", "static-analysis"))
+            compatibility {
+                features {
+                    configurationCache = true
+                }
+            }
         }
     }
 }

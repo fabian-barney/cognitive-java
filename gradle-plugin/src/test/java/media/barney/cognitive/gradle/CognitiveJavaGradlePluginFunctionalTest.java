@@ -15,6 +15,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CognitiveJavaGradlePluginFunctionalTest {
 
@@ -23,52 +24,7 @@ class CognitiveJavaGradlePluginFunctionalTest {
 
     @Test
     void singleModuleProjectRunsCognitiveJavaCheck() throws Exception {
-        writeFile("settings.gradle.kts", "rootProject.name = \"demo\"");
-        writeFile("build.gradle.kts", """
-                plugins {
-                    java
-                    id("media.barney.cognitive-java")
-                }
-
-                repositories {
-                    mavenCentral()
-                }
-
-                dependencies {
-                    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
-                    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-                }
-
-                tasks.test {
-                    useJUnitPlatform()
-                }
-                """);
-        writeFile("src/main/java/demo/Sample.java", """
-                package demo;
-
-                public class Sample {
-                    public int alpha(boolean value) {
-                        if (value) {
-                            return 1;
-                        }
-                        return 0;
-                    }
-                }
-                """);
-        writeFile("src/test/java/demo/SampleTest.java", """
-                package demo;
-
-                import org.junit.jupiter.api.Test;
-
-                import static org.junit.jupiter.api.Assertions.assertEquals;
-
-                class SampleTest {
-                    @Test
-                    void alphaReturnsOneForTrue() {
-                        assertEquals(1, new Sample().alpha(true));
-                    }
-                }
-                """);
+        writeSingleModuleProject();
 
         BuildResult result = runBuild("cognitive-java-check");
 
@@ -158,6 +114,19 @@ class CognitiveJavaGradlePluginFunctionalTest {
         assertFalse(Files.exists(tempDir.resolve("lib/build/reports/jacoco/test/jacocoTestReport.xml")));
     }
 
+    @Test
+    void singleModuleProjectReusesConfigurationCache() throws Exception {
+        writeSingleModuleProject();
+
+        BuildResult first = runBuild("--configuration-cache", "cognitive-java-check");
+        BuildResult second = runBuild("--configuration-cache", "cognitive-java-check");
+
+        assertFalse(Files.exists(tempDir.resolve("build/reports/jacoco/test/jacocoTestReport.xml")));
+        assertTrue(first.getOutput().contains("Configuration cache entry stored."));
+        assertTrue(second.getOutput().contains("Configuration cache entry reused."));
+        assertEquals(TaskOutcome.SUCCESS, second.task(":cognitive-java-check").getOutcome());
+    }
+
     private BuildResult runBuild(String... arguments) {
         List<String> gradleArguments = new ArrayList<>();
         gradleArguments.add("-Dgradle.user.home=" + tempDir.resolve("gradle-user-home"));
@@ -168,6 +137,55 @@ class CognitiveJavaGradlePluginFunctionalTest {
                 .withArguments(gradleArguments)
                 .withPluginClasspath()
                 .build();
+    }
+
+    private void writeSingleModuleProject() throws IOException {
+        writeFile("settings.gradle.kts", "rootProject.name = \"demo\"");
+        writeFile("build.gradle.kts", """
+                plugins {
+                    java
+                    id("media.barney.cognitive-java")
+                }
+
+                repositories {
+                    mavenCentral()
+                }
+
+                dependencies {
+                    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+                    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+                }
+
+                tasks.test {
+                    useJUnitPlatform()
+                }
+                """);
+        writeFile("src/main/java/demo/Sample.java", """
+                package demo;
+
+                public class Sample {
+                    public int alpha(boolean value) {
+                        if (value) {
+                            return 1;
+                        }
+                        return 0;
+                    }
+                }
+                """);
+        writeFile("src/test/java/demo/SampleTest.java", """
+                package demo;
+
+                import org.junit.jupiter.api.Test;
+
+                import static org.junit.jupiter.api.Assertions.assertEquals;
+
+                class SampleTest {
+                    @Test
+                    void alphaReturnsOneForTrue() {
+                        assertEquals(1, new Sample().alpha(true));
+                    }
+                }
+                """);
     }
 
     private void writeFile(String relativePath, String content) throws IOException {
