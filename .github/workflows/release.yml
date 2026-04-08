@@ -45,24 +45,31 @@ jobs:
       - name: Normalize and import GPG key
         env:
           MAVEN_GPG_PRIVATE_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
         shell: bash
         run: |
           export GNUPGHOME="$(mktemp -d)"
           echo "GNUPGHOME=${GNUPGHOME}" >> "$GITHUB_ENV"
           raw_key="$(mktemp)"
+          decoded_key="$(mktemp)"
+          import_key="$(mktemp)"
           normalized_key="$(mktemp)"
           printf '%s' "$MAVEN_GPG_PRIVATE_KEY" > "$raw_key"
-          if grep -q 'BEGIN PGP PRIVATE KEY BLOCK' "$raw_key"; then
-            cp "$raw_key" "$normalized_key"
+          if gpg --batch --import-options import-show --dry-run "$raw_key" >/dev/null 2>&1; then
+            cp "$raw_key" "$import_key"
+          elif base64 --decode "$raw_key" > "$decoded_key" 2>/dev/null \
+            && gpg --batch --import-options import-show --dry-run "$decoded_key" >/dev/null 2>&1; then
+            cp "$decoded_key" "$import_key"
           else
-            if ! base64 --decode "$raw_key" > "$normalized_key"; then
-              echo "::error::MAVEN_GPG_PRIVATE_KEY is not ASCII-armored and could not be base64-decoded. Ensure the secret contains either an armored PGP private key block or a base64-encoded armored private key."
-              exit 1
-            fi
-            if ! grep -q 'BEGIN PGP PRIVATE KEY BLOCK' "$normalized_key"; then
-              echo "::error::MAVEN_GPG_PRIVATE_KEY was base64-decoded successfully, but the decoded value is not an ASCII-armored PGP private key block. Check for whitespace, line-ending, or encoding issues in the secret."
-              exit 1
-            fi
+            echo "::error::MAVEN_GPG_PRIVATE_KEY is not importable as raw or base64-decoded OpenPGP private key material. Ensure the secret contains either private key bytes or their base64 encoding."
+            exit 1
+          fi
+          gpg --batch --import "$import_key"
+          gpg --batch --pinentry-mode loopback --passphrase "$MAVEN_GPG_PASSPHRASE" \
+            --armor --export-secret-keys > "$normalized_key"
+          if [ ! -s "$normalized_key" ]; then
+            echo "::error::Failed to export an armored private key after importing MAVEN_GPG_PRIVATE_KEY."
+            exit 1
           fi
           while IFS= read -r line; do
             echo "::add-mask::$line"
@@ -73,7 +80,6 @@ jobs:
             cat "$normalized_key"
             echo "${gpg_env_delimiter}"
           } >> "$GITHUB_ENV"
-          gpg --batch --import "$normalized_key"
 
       - name: Publish Maven artifacts
         env:
