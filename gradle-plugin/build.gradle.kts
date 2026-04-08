@@ -37,7 +37,8 @@ abstract class VerifyCoreJarTask : DefaultTask() {
 
     @TaskAction
     fun verify() {
-        val jar = coreJar.get().asFile
+        val jar = coreJar.orNull?.asFile
+            ?: throw GradleException("Missing configured core jar path. Run `mvn -pl core -am package` from the repository root first.")
         if (!jar.exists()) {
             throw GradleException(
                 "Missing $jar. Run `mvn -pl core -am package` from the repository root first."
