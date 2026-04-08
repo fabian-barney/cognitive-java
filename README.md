@@ -7,7 +7,7 @@ It analyzes Java source statically using the Sonar Cognitive Complexity rules, r
 ## Modules
 
 - `core`: Cognitive Complexity engine, CLI orchestration, source discovery, and report formatting
-- `cli`: executable entrypoint that packages the core as a runnable jar
+- `cli`: executable entrypoint that bundles the core as a runnable jar
 - `gradle-plugin`: self-contained Gradle plugin build exposing `media.barney.cognitive-java`
 - `maven-plugin`: native Maven plugin exposing the `check` goal
 
@@ -39,15 +39,13 @@ mvn -B -pl maven-plugin -am verify
 
 ## Shared CRAP Gate
 
-Repository CI also runs the shared `crap-java` gate so this project is checked
-the same way as the other Java repositories in this GitHub account.
+Repository CI also runs the shared `crap-java` gate so this project is checked the same way as the other Java repositories in this GitHub account.
 
 The gate resolves the published CLI from Maven Central:
 
-- `media.barney:crap-java-cli:0.3.2`
+- `media.barney:crap-java-cli:0.4.1`
 
-CI invokes that CLI in Maven mode for `core`, `cli`, and `maven-plugin`, and in
-Gradle mode for `gradle-plugin`.
+CI invokes that CLI in Maven mode for `core`, `cli`, and `maven-plugin`, and in Gradle mode for `gradle-plugin`.
 
 ## Run
 
@@ -60,7 +58,7 @@ mvn -B -pl cli -am -DskipTests package
 From the project root you want to analyze:
 
 ```bash
-java -jar cli/target/cognitive-java-cli-0.2.0.jar
+java -jar cli/target/cognitive-java-cli-0.3.0.jar
 ```
 
 ## CLI
@@ -76,53 +74,33 @@ java -jar cli/target/cognitive-java-cli-0.2.0.jar
 Examples:
 
 ```bash
-java -jar cli/target/cognitive-java-cli-0.2.0.jar --help
-java -jar cli/target/cognitive-java-cli-0.2.0.jar
-java -jar cli/target/cognitive-java-cli-0.2.0.jar --changed
-java -jar cli/target/cognitive-java-cli-0.2.0.jar src/main/java/demo/Sample.java
-java -jar cli/target/cognitive-java-cli-0.2.0.jar module-a module-b
+java -jar cli/target/cognitive-java-cli-0.3.0.jar --help
+java -jar cli/target/cognitive-java-cli-0.3.0.jar
+java -jar cli/target/cognitive-java-cli-0.3.0.jar --changed
+java -jar cli/target/cognitive-java-cli-0.3.0.jar src/main/java/demo/Sample.java
+java -jar cli/target/cognitive-java-cli-0.3.0.jar module-a module-b
 ```
 
-## GitHub Packages
+## Distribution
 
-Release `0.2.0` publishes these coordinates to GitHub Packages:
+Public releases ship through Maven Central, with the Gradle Plugin Portal as the primary Gradle plugin channel once approved:
 
-- `media.barney:cognitive-java-core:0.2.0`
-- `media.barney:cognitive-java-cli:0.2.0`
-- `media.barney:cognitive-java-maven-plugin:0.2.0`
-- Gradle plugin id `media.barney.cognitive-java` version `0.2.0`
+- `media.barney:cognitive-java-core:<version>`
+- `media.barney:cognitive-java-cli:<version>`
+- `media.barney:cognitive-java-maven-plugin:<version>`
+- Gradle plugin id `media.barney.cognitive-java` version `<version>`
 
-### Gradle
-
-Configure the plugin repository in `settings.gradle(.kts)`:
-
-```kotlin
-pluginManagement {
-    repositories {
-        maven {
-            url = uri("https://maven.pkg.github.com/fabian-barney/cognitive-java")
-            credentials {
-                username = providers.gradleProperty("gpr.user")
-                    .orElse(providers.environmentVariable("GITHUB_ACTOR"))
-                    .get()
-                password = providers.gradleProperty("gpr.key")
-                    .orElse(providers.environmentVariable("GITHUB_TOKEN"))
-                    .get()
-            }
-        }
-        gradlePluginPortal()
-        mavenCentral()
-    }
-}
-```
+### Gradle Plugin Portal
 
 Apply the plugin in `build.gradle(.kts)`:
 
 ```kotlin
 plugins {
-    id("media.barney.cognitive-java") version "0.2.0"
+    id("media.barney.cognitive-java") version "<version>"
 }
 ```
+
+No custom `pluginManagement` repository configuration is required for published releases.
 
 Run:
 
@@ -130,32 +108,30 @@ Run:
 ./gradlew cognitive-java-check
 ```
 
-### Maven
+### Maven Central Gradle Plugin
 
-Configure GitHub Packages as a plugin repository:
+If you want to resolve the Gradle plugin from Maven Central instead of waiting for Plugin Portal availability, add Maven Central to plugin resolution in `settings.gradle(.kts)`:
 
-```xml
-<pluginRepositories>
-  <pluginRepository>
-    <id>github</id>
-    <url>https://maven.pkg.github.com/fabian-barney/cognitive-java</url>
-  </pluginRepository>
-</pluginRepositories>
+```kotlin
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
 ```
 
-Authenticate Maven with a matching `github` server entry, for example in `~/.m2/settings.xml`:
+Then apply the same plugin id in `build.gradle(.kts)`:
 
-```xml
-<servers>
-  <server>
-    <id>github</id>
-    <username>${env.GITHUB_ACTOR}</username>
-    <password>${env.GITHUB_TOKEN}</password>
-  </server>
-</servers>
+```kotlin
+plugins {
+    id("media.barney.cognitive-java") version "<version>"
+}
 ```
 
-The token used here needs package read access.
+The marker publication lives at `media.barney.cognitive-java:media.barney.cognitive-java.gradle.plugin:<version>` and resolves to the implementation artifact `media.barney:cognitive-java-gradle-plugin:<version>`.
+
+### Maven Central
 
 Add the plugin:
 
@@ -165,7 +141,7 @@ Add the plugin:
     <plugin>
       <groupId>media.barney</groupId>
       <artifactId>cognitive-java-maven-plugin</artifactId>
-      <version>0.2.0</version>
+      <version>&lt;version&gt;</version>
       <executions>
         <execution>
           <goals>
@@ -178,15 +154,13 @@ Add the plugin:
 </build>
 ```
 
+No custom `<pluginRepositories>` or consumer-side authentication are required for published releases.
+
 Run:
 
 ```bash
 mvn verify
 ```
-
-## Release
-
-Tag `v0.2.0` from `main` after the pull request checks are green. The tag-triggered release workflow publishes the Maven artifacts, publishes the Gradle plugin publications, and creates the GitHub release.
 
 ## Exit Codes
 
