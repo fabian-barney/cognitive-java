@@ -47,6 +47,22 @@ The gate resolves the published CLI from Maven Central:
 
 CI invokes that CLI in Maven mode for `core`, `cli`, and `maven-plugin`, and in Gradle mode for `gradle-plugin`.
 
+## Self Gate
+
+Repository CI also runs the published `cognitive-java` Maven plugin against
+this repository as a separate `cognitive-java Gate` job:
+
+- `media.barney:cognitive-java-maven-plugin:0.3.0`
+
+From the repository root, run the same gate locally with:
+
+```bash
+mvn -B -N media.barney:cognitive-java-maven-plugin:0.3.0:check
+```
+
+This repo uses the published plugin in non-recursive mode because binding the
+plugin into the same Maven reactor would create a project cycle.
+
 ## Run
 
 Build the CLI jar:
