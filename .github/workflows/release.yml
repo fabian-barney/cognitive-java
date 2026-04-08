@@ -50,6 +50,16 @@ jobs:
         run: |
           normalized_key="$(mktemp)"
           candidate_key="$(mktemp)"
+          temp_files=("$normalized_key" "$candidate_key")
+          cleanup() {
+            local path
+            for path in "${temp_files[@]}"; do
+              if [ -n "$path" ] && [ -e "$path" ]; then
+                rm -f "$path"
+              fi
+            done
+          }
+          trap cleanup EXIT
           printf '%s' "$MAVEN_GPG_PRIVATE_KEY" > "$candidate_key"
           import_succeeded=0
           for decode_depth in 0 1 2 3; do
@@ -61,9 +71,13 @@ jobs:
               break
             fi
             next_key="$(mktemp)"
+            rm -rf "$candidate_home"
             if ! base64 --decode "$candidate_key" > "$next_key" 2>/dev/null; then
+              rm -f "$next_key"
               break
             fi
+            rm -f "$candidate_key"
+            temp_files+=("$next_key")
             candidate_key="$next_key"
           done
           if [ "$import_succeeded" -ne 1 ]; then
