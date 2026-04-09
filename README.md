@@ -1,98 +1,26 @@
 # cognitive-java
 
-`cognitive-java` is a shared Cognitive Complexity toolkit for Java projects.
+`cognitive-java` is a Cognitive Complexity toolkit for Java projects.
 
-It analyzes Java source statically using the Sonar Cognitive Complexity rules, reports the worst methods first, and fails the build when any method exceeds the default Sonar threshold of `25`.
+It analyzes Java source statically, reports the worst methods first, and fails when any method exceeds the default threshold of `25`.
 
-## Modules
+## Behavior
 
-- `core`: Cognitive Complexity engine, CLI orchestration, source discovery, and report formatting
-- `cli`: executable entrypoint that bundles the core as a runnable jar
-- `gradle-plugin`: self-contained Gradle plugin build exposing `media.barney.cognitive-java`
-- `maven-plugin`: native Maven plugin exposing the `check` goal
-
-## Metric
-
-- The implementation follows the SonarSource Cognitive Complexity white paper.
-- The tool is pure static analysis. It does not run tests, generate coverage, or read JaCoCo reports.
-- The threshold is fixed at `25`.
-
-## Build and Test
-
-```bash
-mvn -B -pl cli -am package
-```
-
-Build and test the Gradle plugin module after packaging the core jar:
-
-```bash
-mvn -B -pl core -am package
-cd gradle-plugin
-./gradlew test
-```
-
-Build and test the Maven plugin module, including its invoker integration fixtures:
-
-```bash
-mvn -B -pl maven-plugin -am verify
-```
-
-## Shared CRAP Gate
-
-Repository CI also runs the shared `crap-java` gate so this project is checked the same way as the other Java repositories in this GitHub account.
-
-The gate resolves the published CLI from Maven Central:
-
-- `media.barney:crap-java-cli:0.4.1`
-
-CI invokes that CLI in Maven mode for `core`, `cli`, and `maven-plugin`, and in Gradle mode for `gradle-plugin`.
-
-## Self Gate
-
-Repository CI also runs the published `cognitive-java` Maven plugin against
-this repository as a separate `cognitive-java Gate` job:
-
-- `media.barney:cognitive-java-maven-plugin:0.3.0`
-
-From the repository root, run the same gate locally with:
-
-```bash
-mvn -B -N media.barney:cognitive-java-maven-plugin:0.3.0:check
-```
-
-This repo uses the published plugin in non-recursive mode because binding the
-plugin into the same Maven reactor would create a project cycle.
-
-## Self-Hosting Gate Scope
-
-Consumer Maven repositories should standardize local and AI-agent validation on:
-
-```bash
-mvn -B -ntp verify
-```
-
-This repository keeps self-hosting exceptions in CI so the metric jobs still own
-the full repository scope, including the embedded `gradle-plugin/` source tree:
-
-- `crap-java Gate` owns CRAP and coverage failures across `core`, `cli`, `maven-plugin`, and `gradle-plugin/src/main/java`
-- `cognitive-java Gate` owns Cognitive Complexity failures across `core`, `cli`, `maven-plugin`, and `gradle-plugin/src/main/java`
-- `Gradle Plugin` validates plugin build and test behavior only; it does not own metric failures
-
-## Run
-
-Build the CLI jar:
-
-```bash
-mvn -B -pl cli -am -DskipTests package
-```
-
-From the project root you want to analyze:
-
-```bash
-java -jar cli/target/cognitive-java-cli-0.3.0.jar
-```
+- Pure static analysis
+- Does not run tests, generate coverage, or read JaCoCo reports
+- Threshold is fixed at `25`
 
 ## CLI
+
+Published artifact:
+
+- `media.barney:cognitive-java-cli:<version>`
+
+Run the shaded jar after downloading it from Maven Central:
+
+```bash
+java -jar cognitive-java-cli-<version>.jar [args...]
+```
 
 ```text
 --help      Print usage to stdout
@@ -105,23 +33,19 @@ java -jar cli/target/cognitive-java-cli-0.3.0.jar
 Examples:
 
 ```bash
-java -jar cli/target/cognitive-java-cli-0.3.0.jar --help
-java -jar cli/target/cognitive-java-cli-0.3.0.jar
-java -jar cli/target/cognitive-java-cli-0.3.0.jar --changed
-java -jar cli/target/cognitive-java-cli-0.3.0.jar src/main/java/demo/Sample.java
-java -jar cli/target/cognitive-java-cli-0.3.0.jar module-a module-b
+java -jar cognitive-java-cli-<version>.jar --help
+java -jar cognitive-java-cli-<version>.jar
+java -jar cognitive-java-cli-<version>.jar --changed
+java -jar cognitive-java-cli-<version>.jar src/main/java/demo/Sample.java
+java -jar cognitive-java-cli-<version>.jar module-a module-b
 ```
 
-## Distribution
+## Gradle Plugin
 
-Public releases ship through Maven Central, with the Gradle Plugin Portal as the primary Gradle plugin channel once approved:
+Published plugin:
 
-- `media.barney:cognitive-java-core:<version>`
-- `media.barney:cognitive-java-cli:<version>`
-- `media.barney:cognitive-java-maven-plugin:<version>`
-- Gradle plugin id `media.barney.cognitive-java` version `<version>`
-
-### Gradle Plugin Portal
+- Plugin id `media.barney.cognitive-java`
+- Version `<version>`
 
 Apply the plugin in `build.gradle(.kts)`:
 
@@ -131,7 +55,7 @@ plugins {
 }
 ```
 
-No custom `pluginManagement` repository configuration is required for published releases.
+Published releases work through the Gradle Plugin Portal without extra `pluginManagement` configuration.
 
 Run:
 
@@ -139,9 +63,7 @@ Run:
 ./gradlew cognitive-java-check
 ```
 
-### Maven Central Gradle Plugin
-
-If you want to resolve the Gradle plugin from Maven Central instead of waiting for Plugin Portal availability, add Maven Central to plugin resolution in `settings.gradle(.kts)`:
+If you resolve plugins from Maven Central instead of the Gradle Plugin Portal, add Maven Central to `pluginManagement.repositories` in `settings.gradle(.kts)`:
 
 ```kotlin
 pluginManagement {
@@ -152,19 +74,15 @@ pluginManagement {
 }
 ```
 
-Then apply the same plugin id in `build.gradle(.kts)`:
+The marker publication is `media.barney.cognitive-java:media.barney.cognitive-java.gradle.plugin:<version>` and resolves to `media.barney:cognitive-java-gradle-plugin:<version>`.
 
-```kotlin
-plugins {
-    id("media.barney.cognitive-java") version "<version>"
-}
-```
+## Maven Plugin
 
-The marker publication lives at `media.barney.cognitive-java:media.barney.cognitive-java.gradle.plugin:<version>` and resolves to the implementation artifact `media.barney:cognitive-java-gradle-plugin:<version>`.
+Published artifact:
 
-### Maven Central
+- `media.barney:cognitive-java-maven-plugin:<version>`
 
-Add the plugin:
+The plugin exposes the `check` goal. Bind it in your build:
 
 ```xml
 <build>
@@ -185,7 +103,7 @@ Add the plugin:
 </build>
 ```
 
-No custom `<pluginRepositories>` or consumer-side authentication are required for published releases.
+Published releases do not require custom `<pluginRepositories>` entries or consumer-side authentication.
 
 Run:
 
@@ -201,4 +119,4 @@ mvn verify
 
 ## Contributing
 
-See `CONTRIBUTING.md` for the issue-linked branch, commit, and PR flow used in this repository.
+See `CONTRIBUTING.md` for repository layout, local validation commands, CI ownership notes, and the issue-linked contribution workflow used in this repository.
