@@ -5,7 +5,7 @@ All changes in this repository are expected to be issue-linked.
 ## Workflow
 
 1. Create or confirm the GitHub issue first.
-2. Create a descriptive branch that includes the issue number, for example `codex/23-downstream-docs`.
+2. Create a descriptive branch that includes the issue number, for example `25-downstream-docs`.
 3. Reference the issue number in every commit message.
 4. Open a PR that closes the issue.
 5. After each push, review new PR feedback, fix valid findings in a follow-up push, reply when a finding is not applicable, and resolve threads only after the fix or explicit invalidation response.

@@ -63,7 +63,7 @@ Run:
 ./gradlew cognitive-java-check
 ```
 
-If you resolve plugins from Maven Central instead of the Gradle Plugin Portal, add Maven Central to `pluginManagement.repositories` in `settings.gradle(.kts)`:
+If you want Gradle to check Maven Central before the Gradle Plugin Portal, add both repositories to `pluginManagement.repositories` in `settings.gradle(.kts)`:
 
 ```kotlin
 pluginManagement {
