@@ -154,7 +154,7 @@ jobs:
       # separate from the Gradle Plugin build/test job and runs via the
       # published plugin to avoid a self-referential reactor cycle.
       - name: Run full-repo cognitive-java gate
-        run: mvn -B -N media.barney:cognitive-java-maven-plugin:0.3.0:check
+        run: mvn -B -N media.barney:cognitive-java-maven-plugin:0.4.0:check
 
   publishing-preflight:
     name: Publishing Preflight
