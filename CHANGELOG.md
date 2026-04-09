@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 - 2026-04-10
+
+### Changed
+
+- Reduced the fixed Cognitive Complexity threshold from `25` to `15` for the published CLI and plugins.
+- Updated the threshold failure messaging, tests, and consumer-facing documentation to match the stricter default gate.
+
 ## 0.3.0 - 2026-04-08
 
 ### Added

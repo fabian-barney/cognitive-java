@@ -2,13 +2,13 @@
 
 `cognitive-java` is a Cognitive Complexity toolkit for Java projects.
 
-It analyzes Java source statically, reports the worst methods first, and fails when any method exceeds the default threshold of `25`.
+It analyzes Java source statically, reports the worst methods first, and fails when any method exceeds the default threshold of `15`.
 
 ## Behavior
 
 - Pure static analysis
 - Does not run tests, generate coverage, or read JaCoCo reports
-- Threshold is fixed at `25`
+- Threshold is fixed at `15`
 
 ## CLI
 
@@ -115,7 +115,7 @@ mvn verify
 
 - `0` success, threshold respected
 - `1` invalid CLI usage
-- `2` Cognitive Complexity threshold exceeded (`> 25`)
+- `2` Cognitive Complexity threshold exceeded (`> 15`)
 
 ## Contributing
 
