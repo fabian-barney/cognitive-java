@@ -12,6 +12,8 @@ import org.jspecify.annotations.Nullable;
 
 final class CliApplication {
 
+    private static final int COGNITIVE_COMPLEXITY_THRESHOLD = 15;
+
     private final Path projectRoot;
     private final PrintStream out;
     private final PrintStream err;
@@ -41,7 +43,8 @@ final class CliApplication {
 
             int max = Main.maxCognitiveComplexity(metrics);
             if (thresholdExceeded(max)) {
-                err.printf("Cognitive Complexity threshold exceeded: %d > 25%n", max);
+                err.printf("Cognitive Complexity threshold exceeded: %d > %d%n", max,
+                        COGNITIVE_COMPLEXITY_THRESHOLD);
                 return 2;
             }
             return 0;
@@ -52,7 +55,7 @@ final class CliApplication {
     }
 
     static boolean thresholdExceeded(int max) {
-        return max > 25;
+        return max > COGNITIVE_COMPLEXITY_THRESHOLD;
     }
 
     private ParseOutcome parseArguments(String[] args) {

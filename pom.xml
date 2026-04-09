@@ -6,7 +6,7 @@
 
   <groupId>media.barney</groupId>
   <artifactId>cognitive-java-parent</artifactId>
-  <version>0.3.0</version>
+  <version>0.4.0</version>
   <packaging>pom</packaging>
 
   <name>cognitive-java Parent</name>
