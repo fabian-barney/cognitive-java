@@ -56,12 +56,12 @@ The gate runs Maven-mode checks for `core`, `cli`, and `maven-plugin`, and a sep
 
 Repository CI also runs the published `cognitive-java` Maven plugin as a separate `cognitive-java Gate` job:
 
-- `media.barney:cognitive-java-maven-plugin:0.3.0`
+- `media.barney:cognitive-java-maven-plugin:0.4.0`
 
 Run the same gate locally from the repository root with:
 
 ```bash
-mvn -B -N media.barney:cognitive-java-maven-plugin:0.3.0:check
+mvn -B -N media.barney:cognitive-java-maven-plugin:0.4.0:check
 ```
 
 This repository uses the published plugin in non-recursive mode because binding the plugin into the same Maven reactor would create a project cycle.
