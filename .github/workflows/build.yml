@@ -117,7 +117,10 @@ jobs:
       - name: Set up Gradle wrapper permissions
         run: chmod +x gradle-plugin/gradlew
 
-      - name: Run Maven crap-java gate
+      # The crap-java Gate owns CRAP failures across the full repository scope.
+      # The Gradle Plugin job validates plugin behavior separately, but metric
+      # failures under gradle-plugin/src/main/java still belong here.
+      - name: Run Maven-source crap-java gate
         run: >
           java -jar target/crap-java-gate/crap-java-cli-${CRAP_JAVA_VERSION}.jar
           --build-tool maven
@@ -125,7 +128,7 @@ jobs:
           cli/src/main/java
           maven-plugin/src/main/java
 
-      - name: Run Gradle crap-java gate
+      - name: Run Gradle-plugin crap-java gate
         run: >
           java -jar target/crap-java-gate/crap-java-cli-${CRAP_JAVA_VERSION}.jar
           --build-tool gradle
@@ -146,7 +149,11 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Run cognitive-java gate
+      # The cognitive-java Gate owns Cognitive Complexity failures across every
+      # project source tree, including gradle-plugin/src/main/java. This stays
+      # separate from the Gradle Plugin build/test job and runs via the
+      # published plugin to avoid a self-referential reactor cycle.
+      - name: Run full-repo cognitive-java gate
         run: mvn -B -N media.barney:cognitive-java-maven-plugin:0.3.0:check
 
   publishing-preflight:

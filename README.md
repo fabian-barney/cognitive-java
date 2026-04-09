@@ -63,6 +63,21 @@ mvn -B -N media.barney:cognitive-java-maven-plugin:0.3.0:check
 This repo uses the published plugin in non-recursive mode because binding the
 plugin into the same Maven reactor would create a project cycle.
 
+## Self-Hosting Gate Scope
+
+Consumer Maven repositories should standardize local and AI-agent validation on:
+
+```bash
+mvn -B -ntp verify
+```
+
+This repository keeps self-hosting exceptions in CI so the metric jobs still own
+the full repository scope, including the embedded `gradle-plugin/` source tree:
+
+- `crap-java Gate` owns CRAP and coverage failures across `core`, `cli`, `maven-plugin`, and `gradle-plugin/src/main/java`
+- `cognitive-java Gate` owns Cognitive Complexity failures across `core`, `cli`, `maven-plugin`, and `gradle-plugin/src/main/java`
+- `Gradle Plugin` validates plugin build and test behavior only; it does not own metric failures
+
 ## Run
 
 Build the CLI jar:
