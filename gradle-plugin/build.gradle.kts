@@ -13,6 +13,7 @@ import org.gradle.plugin.compatibility.compatibility
 import org.gradle.plugins.signing.Sign
 import org.gradle.testing.jacoco.tasks.JacocoReport
 import org.gradle.work.DisableCachingByDefault
+import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilderFactory
 
 plugins {
@@ -81,7 +82,13 @@ dependencies {
 
 fun parentPomProperty(name: String): String {
     val factory = DocumentBuilderFactory.newInstance()
+    factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
     factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+    factory.setFeature("http://xml.org/sax/features/external-general-entities", false)
+    factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+    factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+    factory.setXIncludeAware(false)
+    factory.setExpandEntityReferences(false)
     val document = factory.newDocumentBuilder().parse(layout.projectDirectory.file("../pom.xml").asFile)
     return document.getElementsByTagName(name).item(0)?.textContent
         ?: throw GradleException("Missing parent POM property: $name")
