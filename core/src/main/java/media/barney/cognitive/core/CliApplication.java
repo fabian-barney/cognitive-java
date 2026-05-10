@@ -81,13 +81,12 @@ final class CliApplication {
     }
 
     private List<Path> nonExplicitFiles(CliMode mode) throws Exception {
-        if (mode == CliMode.CHANGED_SRC) {
-            return ChangedFileDetector.changedJavaFilesUnderSourceRoots(projectRoot);
-        }
-        if (mode == CliMode.ALL_SRC) {
-            return SourceFileFinder.findAllJavaFilesUnderSourceRoots(projectRoot);
-        }
-        return List.of();
+        return switch (mode) {
+            case CHANGED_SRC -> ChangedFileDetector.changedJavaFilesUnderSourceRoots(projectRoot);
+            case ALL_SRC -> SourceFileFinder.findAllJavaFilesUnderSourceRoots(projectRoot);
+            case EXPLICIT_FILES, HELP ->
+                    throw new IllegalStateException("Unexpected CLI mode during non-explicit file resolution: " + mode);
+        };
     }
 
     private List<Path> explicitFiles(List<String> args) throws Exception {

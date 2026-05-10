@@ -52,6 +52,30 @@ class CognitiveComplexityAnalyzerTest {
     }
 
     @Test
+    void addsRecursionIncrementForDirectSelfRecursion() {
+        Map<String, String> sources = Map.of(
+                "Sample.java", """
+                        package demo;
+
+                        class Sample {
+                            static int alpha(int value) {
+                                if (value <= 0) {
+                                    return 0;
+                                }
+                                return alpha(value - 1);
+                            }
+                        }
+                        """
+        );
+
+        List<MethodMetrics> metrics = CognitiveComplexityAnalyzer.analyzeSources(sources);
+
+        assertEquals(List.of(
+                new MethodMetrics("alpha", "demo.Sample", 2)
+        ), metrics);
+    }
+
+    @Test
     void analyzesFilesWithDuplicateBasenamesAcrossModules() throws Exception {
         Path moduleA = tempDir.resolve("module-a/src/main/java/demo/Sample.java");
         Path moduleB = tempDir.resolve("module-b/src/main/java/demo/Sample.java");

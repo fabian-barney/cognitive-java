@@ -201,18 +201,33 @@ final class CognitiveComplexityAnalyzer {
             onStack.add(node);
 
             for (String target : edges.getOrDefault(node, Set.of())) {
-                if (!indexByNode.containsKey(target)) {
-                    strongConnect(target);
-                    lowLinkByNode.put(node, Math.min(lowLink(node), lowLink(target)));
-                } else if (onStack.contains(target)) {
-                    lowLinkByNode.put(node, Math.min(lowLink(node), index(target)));
-                }
+                visitEdge(node, target);
             }
 
-            if (lowLink(node) != index(node)) {
+            if (!isComponentRoot(node)) {
                 return;
             }
 
+            List<String> component = popComponent(node);
+            if (isRecursiveComponent(component)) {
+                recursiveMembers.addAll(component);
+            }
+        }
+
+        private void visitEdge(String node, String target) {
+            if (!indexByNode.containsKey(target)) {
+                strongConnect(target);
+                lowLinkByNode.put(node, Math.min(lowLink(node), lowLink(target)));
+            } else if (onStack.contains(target)) {
+                lowLinkByNode.put(node, Math.min(lowLink(node), index(target)));
+            }
+        }
+
+        private boolean isComponentRoot(String node) {
+            return lowLink(node) == index(node);
+        }
+
+        private List<String> popComponent(String node) {
             List<String> component = new ArrayList<>();
             String member;
             do {
@@ -220,15 +235,15 @@ final class CognitiveComplexityAnalyzer {
                 onStack.remove(member);
                 component.add(member);
             } while (!member.equals(node));
+            return component;
+        }
 
-            boolean recursiveComponent = component.size() > 1;
-            if (!recursiveComponent) {
-                String singleton = component.get(0);
-                recursiveComponent = edges.getOrDefault(singleton, Set.of()).contains(singleton);
+        private boolean isRecursiveComponent(List<String> component) {
+            if (component.size() > 1) {
+                return true;
             }
-            if (recursiveComponent) {
-                recursiveMembers.addAll(component);
-            }
+            String singleton = component.get(0);
+            return edges.getOrDefault(singleton, Set.of()).contains(singleton);
         }
 
         private int index(String node) {
