@@ -13,6 +13,7 @@ import org.gradle.plugin.compatibility.compatibility
 import org.gradle.plugins.signing.Sign
 import org.gradle.testing.jacoco.tasks.JacocoReport
 import org.gradle.work.DisableCachingByDefault
+import javax.xml.parsers.DocumentBuilderFactory
 
 plugins {
     `java-gradle-plugin`
@@ -49,6 +50,7 @@ abstract class VerifyCoreJarTask : DefaultTask() {
 
 val projectVersion = version.toString()
 val coreJar = layout.projectDirectory.file("../core/target/cognitive-java-core-${projectVersion}.jar")
+val junitVersion = parentPomProperty("junit.version")
 val gpgPrivateKey = providers.environmentVariable("MAVEN_GPG_PRIVATE_KEY")
 val gpgPassphrase = providers.environmentVariable("MAVEN_GPG_PASSPHRASE")
 val mavenCentralTokenUsername = providers.gradleProperty("mavenCentralTokenUsername")
@@ -71,10 +73,18 @@ tasks.withType<JavaCompile>().configureEach {
 
 dependencies {
     implementation(files(coreJar.asFile))
-    testImplementation(platform("org.junit:junit-bom:6.0.3"))
+    testImplementation(platform("org.junit:junit-bom:$junitVersion"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation(gradleTestKit())
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+fun parentPomProperty(name: String): String {
+    val factory = DocumentBuilderFactory.newInstance()
+    factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+    val document = factory.newDocumentBuilder().parse(layout.projectDirectory.file("../pom.xml").asFile)
+    return document.getElementsByTagName(name).item(0)?.textContent
+        ?: throw GradleException("Missing parent POM property: $name")
 }
 
 tasks.withType<Test>().configureEach {
