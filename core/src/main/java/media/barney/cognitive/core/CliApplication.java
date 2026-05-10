@@ -74,12 +74,20 @@ final class CliApplication {
     }
 
     private List<Path> filesForMode(CliArguments parsed) throws Exception {
-        return switch (parsed.mode()) {
-            case ALL_SRC -> SourceFileFinder.findAllJavaFilesUnderSourceRoots(projectRoot);
-            case CHANGED_SRC -> ChangedFileDetector.changedJavaFilesUnderSourceRoots(projectRoot);
-            case EXPLICIT_FILES -> explicitFiles(parsed.fileArgs());
-            case HELP -> List.of();
-        };
+        if (parsed.mode() == CliMode.EXPLICIT_FILES) {
+            return explicitFiles(parsed.fileArgs());
+        }
+        return nonExplicitFiles(parsed.mode());
+    }
+
+    private List<Path> nonExplicitFiles(CliMode mode) throws Exception {
+        if (mode == CliMode.CHANGED_SRC) {
+            return ChangedFileDetector.changedJavaFilesUnderSourceRoots(projectRoot);
+        }
+        if (mode == CliMode.ALL_SRC) {
+            return SourceFileFinder.findAllJavaFilesUnderSourceRoots(projectRoot);
+        }
+        return List.of();
     }
 
     private List<Path> explicitFiles(List<String> args) throws Exception {

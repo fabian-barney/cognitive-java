@@ -50,7 +50,7 @@ mvn -B -ntp verify
 
 Repository CI also runs the shared `crap-java` gate. It resolves the published CLI from Maven Central:
 
-- `media.barney:crap-java-cli:0.4.1`
+- `media.barney:crap-java-cli:0.5.0`
 
 The gate runs Maven-mode checks for `core`, `cli`, and `maven-plugin`, and a separate Gradle-mode check for `gradle-plugin/src/main/java`.
 
