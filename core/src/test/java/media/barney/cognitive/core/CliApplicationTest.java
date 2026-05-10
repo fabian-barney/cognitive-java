@@ -9,6 +9,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -99,6 +100,52 @@ class CliApplicationTest {
         assertEquals(0, exit);
         assertTrue(utf8(out).contains("alpha"));
         assertTrue(utf8(out).contains("demo.Sample"));
+    }
+
+    @Test
+    void changedModeAnalyzesModifiedJavaFilesUnderProductionRoots() throws Exception {
+        Path sourceRoot = tempDir.resolve("src/main/java/demo");
+        Files.createDirectories(sourceRoot);
+        Path source = sourceRoot.resolve("Sample.java");
+        Files.writeString(source, """
+                package demo;
+
+                class Sample {
+                    int alpha() {
+                        return 1;
+                    }
+                }
+                """);
+
+        runGit("init");
+        runGit("config", "user.name", "Test User");
+        runGit("config", "user.email", "test@example.com");
+        runGit("add", ".");
+        runGit("commit", "-m", "init");
+
+        Files.writeString(source, """
+                package demo;
+
+                class Sample {
+                    int alpha(boolean value) {
+                        if (value) {
+                            return 1;
+                        }
+                        return 0;
+                    }
+                }
+                """);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
+                .execute(new String[]{"--changed"});
+
+        assertEquals(0, exit);
+        assertTrue(utf8(out).contains("alpha"));
+        assertTrue(utf8(out).contains("demo.Sample"));
+        assertEquals("", utf8(err));
     }
 
     @Test
@@ -194,5 +241,18 @@ class CliApplicationTest {
 
     private static String utf8(ByteArrayOutputStream output) {
         return output.toString(StandardCharsets.UTF_8);
+    }
+
+    private void runGit(String... args) throws Exception {
+        List<String> command = new java.util.ArrayList<>();
+        command.add("git");
+        command.add("-C");
+        command.add(tempDir.toString());
+        command.addAll(List.of(args));
+
+        Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
+        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        int exit = process.waitFor();
+        assertEquals(0, exit, output);
     }
 }
