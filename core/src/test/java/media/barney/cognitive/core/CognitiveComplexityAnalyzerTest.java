@@ -46,8 +46,8 @@ class CognitiveComplexityAnalyzerTest {
         List<MethodMetrics> metrics = CognitiveComplexityAnalyzer.analyzeSources(sources);
 
         assertEquals(List.of(
-                new MethodMetrics("alpha", "demo.A", 2),
-                new MethodMetrics("beta", "demo.B", 2)
+                metric("alpha", "demo.A", "A.java", 4, 9, 2),
+                metric("beta", "demo.B", "B.java", 4, 9, 2)
         ), metrics);
     }
 
@@ -71,7 +71,7 @@ class CognitiveComplexityAnalyzerTest {
         List<MethodMetrics> metrics = CognitiveComplexityAnalyzer.analyzeSources(sources);
 
         assertEquals(List.of(
-                new MethodMetrics("alpha", "demo.Sample", 2)
+                metric("alpha", "demo.Sample", "Sample.java", 4, 9, 2)
         ), metrics);
     }
 
@@ -106,11 +106,11 @@ class CognitiveComplexityAnalyzerTest {
                 }
                 """);
 
-        List<MethodMetrics> metrics = CognitiveComplexityAnalyzer.analyze(List.of(moduleA, moduleB));
+        List<MethodMetrics> metrics = CognitiveComplexityAnalyzer.analyze(tempDir, List.of(moduleA, moduleB));
 
         assertEquals(List.of(
-                new MethodMetrics("beta", "demo.Sample", 2),
-                new MethodMetrics("alpha", "demo.Sample", 1)
+                metric("beta", "demo.Sample", "module-b/src/main/java/demo/Sample.java", 4, 9, 2),
+                metric("alpha", "demo.Sample", "module-a/src/main/java/demo/Sample.java", 4, 9, 1)
         ), metrics);
     }
 
@@ -157,9 +157,18 @@ class CognitiveComplexityAnalyzerTest {
         List<MethodMetrics> metrics = CognitiveComplexityAnalyzer.analyzeSources(sources);
 
         assertEquals(List.of(
-                new MethodMetrics("alpha", "pkg1.A", 1),
-                new MethodMetrics("beta", "pkg2.Foo", 1),
-                new MethodMetrics("beta", "pkg1.Foo", 0)
+                metric("alpha", "pkg1.A", "A.java", 4, 9, 1),
+                metric("beta", "pkg2.Foo", "FooTwo.java", 6, 11, 1),
+                metric("beta", "pkg1.Foo", "FooOne.java", 4, 6, 0)
         ), metrics);
+    }
+
+    private static MethodMetrics metric(String methodName,
+                                        String className,
+                                        String sourcePath,
+                                        int startLine,
+                                        int endLine,
+                                        int complexity) {
+        return new MethodMetrics(methodName, className, sourcePath, startLine, endLine, complexity);
     }
 }

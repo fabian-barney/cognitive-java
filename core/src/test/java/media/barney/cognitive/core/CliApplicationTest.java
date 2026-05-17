@@ -36,10 +36,11 @@ class CliApplicationTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(new ByteArrayOutputStream()))
-                .execute(new String[0]);
+                .execute(new String[]{"--format", "text"});
 
         assertEquals(0, exit);
-        assertTrue(utf8(out).contains("No Java files to analyze."));
+        assertTrue(utf8(out).contains("Cognitive Complexity Report"));
+        assertTrue(utf8(out).contains("Status: passed"));
     }
 
     @Test
@@ -64,13 +65,124 @@ class CliApplicationTest {
         ByteArrayOutputStream err = new ByteArrayOutputStream();
 
         int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
-                .execute(new String[]{"src/main/java/demo/Sample.java"});
+                .execute(new String[]{"--format", "text", "src/main/java/demo/Sample.java"});
 
         assertEquals(0, exit);
         assertTrue(utf8(out).contains("Cognitive Complexity Report"));
         assertTrue(utf8(out).contains("alpha"));
-        assertTrue(utf8(out).contains("demo.Sample"));
+        assertTrue(utf8(out).contains("src/main/java/demo/Sample.java"));
         assertFalse(utf8(err).contains("threshold exceeded"));
+    }
+
+    @Test
+    void outputWritesPrimaryReportInsteadOfStdout() throws Exception {
+        writeSimpleSource();
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
+                .execute(new String[]{
+                        "--format=json",
+                        "--output=reports/primary.json",
+                        "src/main/java/demo/Sample.java"
+                });
+
+        assertEquals(0, exit);
+        assertEquals("", utf8(out));
+        String report = Files.readString(tempDir.resolve("reports/primary.json"));
+        assertTrue(report.contains("\"status\": \"passed\""));
+        assertTrue(report.contains("\"src\": \"src/main/java/demo/Sample.java\""));
+    }
+
+    @Test
+    void junitSidecarIsCompleteEvenWhenPrimaryReportIsFailuresOnly() throws Exception {
+        Path sourceRoot = tempDir.resolve("src/main/java/demo");
+        Files.createDirectories(sourceRoot);
+        Files.writeString(sourceRoot.resolve("Sample.java"), nestedIfSource(7));
+        Files.writeString(sourceRoot.resolve("Ok.java"), """
+                package demo;
+
+                class Ok {
+                    int beta() {
+                        return 1;
+                    }
+                }
+                """);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err), fixedClock())
+                .execute(new String[]{
+                        "--format=json",
+                        "--failures-only",
+                        "--junit-report=reports/junit.xml",
+                        "src/main/java/demo/Sample.java",
+                        "src/main/java/demo/Ok.java"
+                });
+
+        assertEquals(2, exit);
+        assertTrue(utf8(out).contains("\"method\": \"alpha\""));
+        assertFalse(utf8(out).contains("\"method\": \"beta\""));
+        String junit = Files.readString(tempDir.resolve("reports/junit.xml"));
+        assertTrue(junit.contains("tests=\"2\""));
+        assertTrue(junit.contains("alpha:4"));
+        assertTrue(junit.contains("beta:4"));
+        assertTrue(junit.contains("time=\"0.250000\""));
+    }
+
+    @Test
+    void noneFormatWritesEmptyPrimaryFile() throws Exception {
+        writeSimpleSource();
+
+        int exit = new CliApplication(
+                tempDir,
+                new PrintStream(new ByteArrayOutputStream()),
+                new PrintStream(new ByteArrayOutputStream()))
+                .execute(new String[]{
+                        "--format=none",
+                        "--output=reports/empty.txt",
+                        "src/main/java/demo/Sample.java"
+                });
+
+        assertEquals(0, exit);
+        assertEquals("", Files.readString(tempDir.resolve("reports/empty.txt")));
+    }
+
+    @Test
+    void reportPathsCannotEscapeProjectRoot() throws Exception {
+        writeSimpleSource();
+
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(new ByteArrayOutputStream()), new PrintStream(err))
+                .execute(new String[]{
+                        "--output=../outside.txt",
+                        "src/main/java/demo/Sample.java"
+                });
+
+        assertEquals(1, exit);
+        assertTrue(utf8(err).contains("output must stay inside the project root"));
+        assertFalse(Files.exists(tempDir.resolveSibling("outside.txt")));
+    }
+
+    @Test
+    void reportPathCollisionsFailBeforeWriting() throws Exception {
+        writeSimpleSource();
+
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(new ByteArrayOutputStream()), new PrintStream(err))
+                .execute(new String[]{
+                        "--output=reports/result.xml",
+                        "--junit-report=reports/result.xml",
+                        "src/main/java/demo/Sample.java"
+                });
+
+        assertEquals(1, exit);
+        assertTrue(utf8(err).contains("output and junitReport must not point to the same file"));
+        assertFalse(Files.exists(tempDir.resolve("reports/result.xml")));
     }
 
     @Test
@@ -95,11 +207,11 @@ class CliApplicationTest {
         ByteArrayOutputStream err = new ByteArrayOutputStream();
 
         int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
-                .execute(new String[]{"module-a"});
+                .execute(new String[]{"--format", "text", "module-a"});
 
         assertEquals(0, exit);
         assertTrue(utf8(out).contains("alpha"));
-        assertTrue(utf8(out).contains("demo.Sample"));
+        assertTrue(utf8(out).contains("module-a/src/main/java/demo/Sample.java"));
     }
 
     @Test
@@ -140,11 +252,11 @@ class CliApplicationTest {
         ByteArrayOutputStream err = new ByteArrayOutputStream();
 
         int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
-                .execute(new String[]{"--changed"});
+                .execute(new String[]{"--format", "text", "--changed"});
 
         assertEquals(0, exit);
         assertTrue(utf8(out).contains("alpha"));
-        assertTrue(utf8(out).contains("demo.Sample"));
+        assertTrue(utf8(out).contains("src/main/java/demo/Sample.java"));
         assertEquals("", utf8(err));
     }
 
@@ -158,7 +270,7 @@ class CliApplicationTest {
         ByteArrayOutputStream err = new ByteArrayOutputStream();
 
         int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
-                .execute(new String[]{"src/main/java/demo/Sample.java"});
+                .execute(new String[]{"--format", "text", "src/main/java/demo/Sample.java"});
 
         assertEquals(2, exit);
         assertTrue(utf8(out).contains("alpha"));
@@ -167,8 +279,8 @@ class CliApplicationTest {
 
     @Test
     void thresholdExceededIsStrictlyGreaterThanFifteen() {
-        assertFalse(CliApplication.thresholdExceeded(15));
-        assertTrue(CliApplication.thresholdExceeded(16));
+        assertFalse(CliApplication.thresholdExceeded(15, 15));
+        assertTrue(CliApplication.thresholdExceeded(16, 15));
     }
 
     @Test
@@ -237,6 +349,40 @@ class CliApplicationTest {
         builder.append("    }\n");
         builder.append("}\n");
         return builder.toString();
+    }
+
+    private Path writeSimpleSource() throws Exception {
+        Path sourceRoot = tempDir.resolve("src/main/java/demo");
+        Files.createDirectories(sourceRoot);
+        Path source = sourceRoot.resolve("Sample.java");
+        Files.writeString(source, """
+                package demo;
+
+                class Sample {
+                    int alpha(boolean value) {
+                        if (value) {
+                            return 1;
+                        }
+                        return 0;
+                    }
+                }
+                """);
+        return source;
+    }
+
+    private static java.util.function.LongSupplier fixedClock() {
+        return new java.util.function.LongSupplier() {
+            private boolean first = true;
+
+            @Override
+            public long getAsLong() {
+                if (first) {
+                    first = false;
+                    return 1_000_000_000L;
+                }
+                return 1_250_000_000L;
+            }
+        };
     }
 
     private static String utf8(ByteArrayOutputStream output) {

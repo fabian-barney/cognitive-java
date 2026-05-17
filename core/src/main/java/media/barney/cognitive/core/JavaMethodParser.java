@@ -97,7 +97,7 @@ final class JavaMethodParser {
             if (!errors.isEmpty()) {
                 throw new IllegalArgumentException(formatDiagnostics(errors));
             }
-            return collectMethods(task, units);
+            return collectMethods(normalizedSourcePath(sourceName), task, units);
         } catch (IOException ex) {
             throw new UncheckedIOException(ex);
         }
@@ -114,31 +114,39 @@ final class JavaMethodParser {
         return URI.create("string:///" + sourcePath(className));
     }
 
-    private static List<ParsedMethod> collectMethods(JavacTask task,
+    private static List<ParsedMethod> collectMethods(String sourcePath,
+                                                     JavacTask task,
                                                      Iterable<? extends CompilationUnitTree> units) {
         Trees trees = Trees.instance(task);
         List<ParsedMethod> methods = new ArrayList<>();
         for (CompilationUnitTree unit : units) {
             String packageName = unit.getPackageName() == null ? "" : unit.getPackageName().toString();
             SourcePositions positions = trees.getSourcePositions();
-            new MethodScanner(unit, packageName, positions, methods).scan(unit, null);
+            new MethodScanner(unit, packageName, sourcePath, positions, methods).scan(unit, null);
         }
         return methods;
+    }
+
+    private static String normalizedSourcePath(String sourceName) {
+        return sourceName.replace('\\', '/');
     }
 
     private static final class MethodScanner extends TreePathScanner<Void, Void> {
         private final CompilationUnitTree unit;
         private final String packageName;
+        private final String sourcePath;
         private final SourcePositions positions;
         private final List<ParsedMethod> methods;
         private final Deque<String> classNames = new ArrayDeque<>();
 
         private MethodScanner(CompilationUnitTree unit,
                               String packageName,
+                              String sourcePath,
                               SourcePositions positions,
                               List<ParsedMethod> methods) {
             this.unit = unit;
             this.packageName = packageName;
+            this.sourcePath = sourcePath;
             this.positions = positions;
             this.methods = methods;
         }
@@ -170,6 +178,7 @@ final class JavaMethodParser {
                     packageName,
                     currentClassName(),
                     node.getName().toString(),
+                    sourcePath,
                     node.getParameters().size(),
                     lineNumber(start),
                     lineNumber(Math.max(start, bodyEndExclusive - 1)),
