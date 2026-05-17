@@ -22,10 +22,10 @@ record ReportOptions(
                                 @Nullable String outputPath,
                                 @Nullable String junitReportPath) {
         Path root = analysisRoot.toAbsolutePath().normalize();
-        Path output = resolveReportPath(root, "output", outputPath);
-        Path junit = resolveReportPath(root, "junitReport", junitReportPath);
+        Path output = resolveReportPath(root, "--output", outputPath);
+        Path junit = resolveReportPath(root, "--junit-report", junitReportPath);
         if (output != null && junit != null && sameReportTarget(output, junit)) {
-            throw new IllegalArgumentException("output and junitReport must not point to the same file");
+            throw new IllegalArgumentException("--output and --junit-report must not point to the same file");
         }
         return new ReportOptions(format, failuresOnly, omitRedundancy, output, junit);
     }

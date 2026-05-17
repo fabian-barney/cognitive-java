@@ -164,7 +164,7 @@ class CliApplicationTest {
                 });
 
         assertEquals(1, exit);
-        assertTrue(utf8(err).contains("output must stay inside the project root"));
+        assertTrue(utf8(err).contains("--output must stay inside the project root"));
         assertFalse(Files.exists(tempDir.resolveSibling("outside.txt")));
     }
 
@@ -182,7 +182,7 @@ class CliApplicationTest {
                 });
 
         assertEquals(1, exit);
-        assertTrue(utf8(err).contains("output and junitReport must not point to the same file"));
+        assertTrue(utf8(err).contains("--output and --junit-report must not point to the same file"));
         assertFalse(Files.exists(tempDir.resolve("reports/result.xml")));
     }
 

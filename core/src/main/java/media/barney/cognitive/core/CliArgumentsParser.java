@@ -212,7 +212,11 @@ final class CliArgumentsParser {
         if (index + 1 >= args.length) {
             throw new IllegalArgumentException(option.name() + " requires " + valueDescription);
         }
-        return args[index + 1];
+        String nextValue = args[index + 1];
+        if (nextValue.startsWith("--")) {
+            throw new IllegalArgumentException(option.name() + " requires " + valueDescription);
+        }
+        return nextValue;
     }
 
     private static void ensureChangedIsNotCombined(boolean changed, List<String> values) {

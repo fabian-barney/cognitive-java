@@ -139,4 +139,12 @@ class CliArgumentsParserTest {
 
         assertEquals("--threshold requires a positive integer", error.getMessage());
     }
+
+    @Test
+    void missingSeparatedOptionValueCannotConsumeAnotherOption() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"--output", "--format", "json"}));
+
+        assertEquals("--output requires a path", error.getMessage());
+    }
 }
