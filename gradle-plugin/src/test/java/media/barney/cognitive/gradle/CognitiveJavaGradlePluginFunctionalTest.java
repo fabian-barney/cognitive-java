@@ -177,6 +177,28 @@ class CognitiveJavaGradlePluginFunctionalTest {
     }
 
     @Test
+    void noSourceRunDeletesOwnedReportsAndRefreshesExecutionMarker() throws Exception {
+        Path defaultJunit = tempDir.resolve("build/reports/cognitive-java/TEST-cognitive-java.xml");
+        Path executionMarker = tempDir.resolve("build/tmp/cognitive-java/cognitive-java-check/execution.marker");
+        writeSingleModuleProject();
+
+        BuildResult firstResult = runBuild("cognitive-java-check");
+
+        assertEquals(TaskOutcome.SUCCESS, firstResult.task(":cognitive-java-check").getOutcome());
+        assertTrue(Files.exists(defaultJunit));
+        assertTrue(Files.exists(executionMarker));
+
+        Files.delete(tempDir.resolve("src/main/java/demo/Sample.java"));
+
+        BuildResult secondResult = runBuild("cognitive-java-check");
+
+        assertEquals(TaskOutcome.SUCCESS, secondResult.task(":cognitive-java-check").getOutcome());
+        assertFalse(Files.exists(defaultJunit));
+        assertTrue(Files.exists(executionMarker));
+        assertTrue(secondResult.getOutput().contains("No Java files to analyze."));
+    }
+
+    @Test
     void primaryOutputCleanupFollowsConfiguredOutputPath() throws Exception {
         Path oldOutput = tempDir.resolve("build/reports/cognitive-java/old-report.json");
         Path newOutput = tempDir.resolve("build/reports/cognitive-java/new-report.json");
@@ -234,6 +256,50 @@ class CognitiveJavaGradlePluginFunctionalTest {
 
         assertTrue(secondResult.getOutput().contains("output and junitReport must not point to the same file"));
         assertTrue(Files.exists(oldOutput));
+    }
+
+    @Test
+    void failedAnalysisKeepsPreviousOutputWhenReportPathMoves() throws Exception {
+        Path oldOutput = tempDir.resolve("build/reports/cognitive-java/old-report.json");
+        Path newOutput = tempDir.resolve("build/reports/cognitive-java/new-report.json");
+        writeSingleModuleProject("""
+
+                cognitiveJava {
+                    format.set("json")
+                    output.set(layout.buildDirectory.file("reports/cognitive-java/old-report.json"))
+                }
+                """);
+
+        BuildResult firstResult = runBuild("cognitive-java-check");
+
+        assertEquals(TaskOutcome.SUCCESS, firstResult.task(":cognitive-java-check").getOutcome());
+        assertTrue(Files.exists(oldOutput));
+
+        writeSingleModuleProject("""
+
+                cognitiveJava {
+                    format.set("json")
+                    output.set(layout.buildDirectory.file("reports/cognitive-java/new-report.json"))
+                }
+                """);
+        writeFile("src/main/java/demo/Sample.java", """
+                package demo;
+
+                public class Sample {
+                    public int alpha(boolean value) {
+                        if (value) {
+                            return 1
+                        }
+                        return 0;
+                    }
+                }
+                """);
+
+        BuildResult failedResult = runBuildAndFail("cognitive-java-check");
+
+        assertTrue(failedResult.getOutput().contains("cognitive-java-check failed with exit 1"));
+        assertTrue(Files.exists(oldOutput));
+        assertFalse(Files.exists(newOutput));
     }
 
     @Test

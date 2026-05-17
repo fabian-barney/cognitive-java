@@ -11,11 +11,10 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -47,9 +46,9 @@ class CognitiveJavaGradlePluginTest {
         assertEquals("Runs the cognitive-java Cognitive Complexity gate.", checkTask.getDescription());
         assertEquals(15, extension.getThreshold().get());
         assertFalse(extension.getAgent().get());
-        assertEquals("none", extension.getFormat().get());
-        assertFalse(extension.getFailuresOnly().get());
-        assertFalse(extension.getOmitRedundancy().get());
+        assertFalse(extension.getFormat().isPresent());
+        assertFalse(extension.getFailuresOnly().isPresent());
+        assertFalse(extension.getOmitRedundancy().isPresent());
         assertFalse(extension.getOutput().isPresent());
         assertTrue(extension.getJunit().get());
         assertTrue(extension.getJunitReport().get().getAsFile().toPath().normalize().toString()
@@ -137,9 +136,9 @@ class CognitiveJavaGradlePluginTest {
                 (CognitiveJavaCheckTask) project.getTasks().getByName("cognitive-java-check");
         CognitiveJavaExtension extension = project.getExtensions().getByType(CognitiveJavaExtension.class);
 
-        assertEquals("toon", extension.getFormat().get());
-        assertTrue(extension.getFailuresOnly().get());
-        assertTrue(extension.getOmitRedundancy().get());
+        assertFalse(extension.getFormat().isPresent());
+        assertFalse(extension.getFailuresOnly().isPresent());
+        assertFalse(extension.getOmitRedundancy().isPresent());
         assertEquals("toon", checkTask.getFormat().get());
         assertTrue(checkTask.getFailuresOnly().get());
         assertTrue(checkTask.getOmitRedundancy().get());
@@ -159,6 +158,40 @@ class CognitiveJavaGradlePluginTest {
         assertEquals("none", checkTask.getFormat().get());
         assertFalse(checkTask.getFailuresOnly().get());
         assertFalse(checkTask.getOmitRedundancy().get());
+    }
+
+    @Test
+    void explicitExtensionFormatIsPreservedWhenTaskAgentOverridesDefault() {
+        Project project = ProjectBuilder.builder().withProjectDir(tempDir.toFile()).build();
+
+        project.getPluginManager().apply("java");
+        project.getPluginManager().apply(CognitiveJavaGradlePlugin.class);
+        CognitiveJavaExtension extension = project.getExtensions().getByType(CognitiveJavaExtension.class);
+        extension.getAgent().set(true);
+        extension.getFormat().set("toon");
+        CognitiveJavaCheckTask checkTask =
+                (CognitiveJavaCheckTask) project.getTasks().getByName("cognitive-java-check");
+        checkTask.getAgent().set(false);
+
+        assertEquals("toon", checkTask.getFormat().get());
+    }
+
+    @Test
+    void explicitExtensionPrimaryFlagsArePreservedWhenTaskAgentOverridesDefault() {
+        Project project = ProjectBuilder.builder().withProjectDir(tempDir.toFile()).build();
+
+        project.getPluginManager().apply("java");
+        project.getPluginManager().apply(CognitiveJavaGradlePlugin.class);
+        CognitiveJavaExtension extension = project.getExtensions().getByType(CognitiveJavaExtension.class);
+        extension.getAgent().set(true);
+        extension.getFailuresOnly().set(true);
+        extension.getOmitRedundancy().set(true);
+        CognitiveJavaCheckTask checkTask =
+                (CognitiveJavaCheckTask) project.getTasks().getByName("cognitive-java-check");
+        checkTask.getAgent().set(false);
+
+        assertTrue(checkTask.getFailuresOnly().get());
+        assertTrue(checkTask.getOmitRedundancy().get());
     }
 
     @Test
@@ -275,6 +308,24 @@ class CognitiveJavaGradlePluginTest {
         Path collision = projectRoot.resolve("build/reports/cognitive-java/collision.xml");
         task.getOutput().fileValue(collision.toFile());
         task.getJunitReport().fileValue(collision.toFile());
+
+        GradleException exception = assertThrows(GradleException.class, task::runCheck);
+
+        assertTrue(exception.getMessage().contains("output and junitReport must not point to the same file"));
+    }
+
+    @Test
+    void runCheckRejectsAliasedCollidingReportPaths() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        assumeHardLinksAvailable(projectRoot);
+        Path target = projectRoot.resolve("build/reports/cognitive-java/collision.xml");
+        Files.createDirectories(target.getParent());
+        Files.writeString(target, "existing");
+        Path alias = target.resolveSibling("collision-alias.xml");
+        Files.createLink(alias, target);
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        task.getOutput().fileValue(target.toFile());
+        task.getJunitReport().fileValue(alias.toFile());
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
@@ -410,6 +461,141 @@ class CognitiveJavaGradlePluginTest {
     }
 
     @Test
+    void analysisRootPathInputTracksConfiguredRoot() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        Path analysisRoot = projectRoot.resolve("analysis-root");
+        Files.createDirectories(analysisRoot);
+
+        task.getAnalysisRoot().fileValue(analysisRoot.toFile());
+
+        assertEquals(analysisRoot.toAbsolutePath().normalize().toString(), task.getAnalysisRootPathInput().get());
+    }
+
+    @Test
+    void failedRunKeepsRememberedOutputWhenConfiguredPathMoves() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        Path source = writeSource(projectRoot);
+        Path oldOutput = projectRoot.resolve("build/reports/cognitive-java/old-report.json");
+        Path newOutput = projectRoot.resolve("build/reports/cognitive-java/new-report.json");
+        CognitiveJavaCheckTask firstTask = newCheckTask(projectRoot);
+        firstTask.getFormat().set("json");
+        firstTask.getOutput().fileValue(oldOutput.toFile());
+
+        firstTask.runCheck();
+
+        assertTrue(Files.exists(oldOutput));
+
+        CognitiveJavaCheckTask secondTask = newCheckTask(projectRoot);
+        secondTask.getFormat().set("json");
+        secondTask.getOutput().fileValue(newOutput.toFile());
+        Files.writeString(source, """
+                package demo;
+
+                class Sample {
+                    int alpha(boolean value) {
+                        if (value) {
+                            return 1
+                        }
+                        return 0;
+                    }
+                }
+                """);
+
+        GradleException exception = assertThrows(GradleException.class, secondTask::runCheck);
+
+        assertTrue(exception.getMessage().contains("cognitive-java-check failed with exit 1"));
+        assertTrue(Files.exists(oldOutput));
+        assertFalse(Files.exists(newOutput));
+    }
+
+    @Test
+    void rememberChangedReportStateRecordsNewChangedReports() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        Path output = projectRoot.resolve("build/reports/cognitive-java/report.json");
+        Path junit = projectRoot.resolve("build/reports/cognitive-java/report.xml");
+        Object missing = invoke(task, "reportSnapshot", new Class<?>[]{Path.class}, new Object[]{null});
+        Files.createDirectories(output.getParent());
+        Files.writeString(output, "{}");
+        Files.writeString(junit, "<testsuites/>");
+
+        invoke(task, "rememberChangedReportState",
+                new Class<?>[]{Path.class, Path.class, missing.getClass(), missing.getClass()},
+                new Object[]{output, junit, missing, missing});
+
+        assertTrue(Files.isRegularFile(outputStatePath(task)));
+        assertTrue(Files.isRegularFile(junitReportStatePath(task)));
+    }
+
+    @Test
+    void rememberChangedReportStateDeletesMovedUnrememberedReports() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        Path oldOutput = projectRoot.resolve("build/reports/cognitive-java/old-report.json");
+        Path newOutput = projectRoot.resolve("build/reports/cognitive-java/new-report.json");
+        Files.createDirectories(oldOutput.getParent());
+        Files.writeString(oldOutput, "{}");
+        invoke(task, "rememberOutputPath", new Class<?>[]{Path.class}, new Object[]{oldOutput});
+        String rememberedState = Files.readString(outputStatePath(task));
+        Object missing = invoke(task, "reportSnapshot", new Class<?>[]{Path.class}, new Object[]{null});
+        Files.writeString(newOutput, "{\"fresh\":true}");
+
+        invoke(task, "rememberChangedReportState",
+                new Class<?>[]{Path.class, Path.class, missing.getClass(), missing.getClass()},
+                new Object[]{newOutput, null, missing, missing});
+
+        assertFalse(Files.exists(newOutput));
+        assertEquals(rememberedState, Files.readString(outputStatePath(task)));
+    }
+
+    @Test
+    void caseSensitivityDetectionCachesResults() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        Path candidate = projectRoot.resolve("Build/Reports/Cognitive-Java/report.xml");
+
+        boolean detected = invokeBoolean(task, "isCaseInsensitive", Path.class, candidate);
+        boolean cached = invokeBoolean(task, "isCaseInsensitive", Path.class, candidate);
+        boolean fileStoreFallback = invokeBoolean(task, "cachedFileStoreCaseSensitivity", Path.class, projectRoot);
+
+        assertEquals(detected, cached);
+        assertEquals(CognitiveJavaCheckTask.isLikelyCaseInsensitiveOs(), fileStoreFallback);
+    }
+
+    @Test
+    void sameCaseInsensitiveFileNameRespectsCachedCaseSensitivity() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        Path parent = projectRoot.resolve("build/reports/cognitive-java");
+        Files.createDirectories(parent);
+
+        caseSensitivityByDirectory(task).put(parent.toAbsolutePath().normalize(), Boolean.FALSE);
+        assertFalse(invokeBoolean(
+                task,
+                "sameCaseInsensitiveFileName",
+                String.class,
+                "report.xml",
+                String.class,
+                "REPORT.xml",
+                Path.class,
+                parent
+        ));
+
+        caseSensitivityByDirectory(task).put(parent.toAbsolutePath().normalize(), Boolean.TRUE);
+        assertTrue(invokeBoolean(
+                task,
+                "sameCaseInsensitiveFileName",
+                String.class,
+                "report.xml",
+                String.class,
+                "REPORT.xml",
+                Path.class,
+                parent
+        ));
+    }
+
+    @Test
     void likelyCaseInsensitiveFallbackOnlyMatchesWindows() {
         String original = System.getProperty("os.name");
         try {
@@ -487,20 +673,77 @@ class CognitiveJavaGradlePluginTest {
         return (Path) junitReportStatePath.invoke(task);
     }
 
+    private Path outputStatePath(CognitiveJavaCheckTask task) throws Exception {
+        Method outputStatePath = CognitiveJavaCheckTask.class.getDeclaredMethod("outputStatePath");
+        outputStatePath.setAccessible(true);
+        return (Path) outputStatePath.invoke(task);
+    }
+
     private Path executionMarkerPath(CognitiveJavaCheckTask task) throws Exception {
         Method executionMarkerPath = CognitiveJavaCheckTask.class.getDeclaredMethod("executionMarkerPath");
         executionMarkerPath.setAccessible(true);
         return (Path) executionMarkerPath.invoke(task);
     }
 
-    private String ownership(Path reportPath) throws Exception {
-        BasicFileAttributes attributes = Files.readAttributes(reportPath, BasicFileAttributes.class);
-        return "link\t"
-                + attributes.lastModifiedTime().to(TimeUnit.NANOSECONDS) + "\t"
-                + attributes.size();
-    }
-
     private boolean isWindows() {
         return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<Path, Boolean> caseSensitivityByDirectory(CognitiveJavaCheckTask task) throws Exception {
+        var field = CognitiveJavaCheckTask.class.getDeclaredField("caseSensitivityByDirectory");
+        field.setAccessible(true);
+        return (Map<Path, Boolean>) field.get(task);
+    }
+
+    private boolean invokeBoolean(CognitiveJavaCheckTask task,
+                                  String methodName,
+                                  Class<?> firstParameterType,
+                                  Object firstArgument) throws Exception {
+        Method method = CognitiveJavaCheckTask.class.getDeclaredMethod(methodName, firstParameterType);
+        method.setAccessible(true);
+        return (boolean) method.invoke(task, firstArgument);
+    }
+
+    private boolean invokeBoolean(CognitiveJavaCheckTask task,
+                                  String methodName,
+                                  Class<?> firstParameterType,
+                                  Object firstArgument,
+                                  Class<?> secondParameterType,
+                                  Object secondArgument) throws Exception {
+        Method method = CognitiveJavaCheckTask.class.getDeclaredMethod(
+                methodName,
+                firstParameterType,
+                secondParameterType
+        );
+        method.setAccessible(true);
+        return (boolean) method.invoke(task, firstArgument, secondArgument);
+    }
+
+    private boolean invokeBoolean(CognitiveJavaCheckTask task,
+                                  String methodName,
+                                  Class<?> firstParameterType,
+                                  Object firstArgument,
+                                  Class<?> secondParameterType,
+                                  Object secondArgument,
+                                  Class<?> thirdParameterType,
+                                  Object thirdArgument) throws Exception {
+        Method method = CognitiveJavaCheckTask.class.getDeclaredMethod(
+                methodName,
+                firstParameterType,
+                secondParameterType,
+                thirdParameterType
+        );
+        method.setAccessible(true);
+        return (boolean) method.invoke(task, firstArgument, secondArgument, thirdArgument);
+    }
+
+    private Object invoke(CognitiveJavaCheckTask task,
+                          String methodName,
+                          Class<?>[] parameterTypes,
+                          Object[] arguments) throws Exception {
+        Method method = CognitiveJavaCheckTask.class.getDeclaredMethod(methodName, parameterTypes);
+        method.setAccessible(true);
+        return method.invoke(task, arguments);
     }
 }

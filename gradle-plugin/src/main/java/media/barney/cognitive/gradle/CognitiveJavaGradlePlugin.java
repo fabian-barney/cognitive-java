@@ -19,9 +19,6 @@ public class CognitiveJavaGradlePlugin implements Plugin<Project> {
         CognitiveJavaExtension extension = project.getExtensions().create("cognitiveJava", CognitiveJavaExtension.class);
         extension.getThreshold().convention(DEFAULT_THRESHOLD);
         extension.getAgent().convention(false);
-        extension.getFormat().convention(extension.getAgent().map(agent -> agent ? "toon" : "none"));
-        extension.getFailuresOnly().convention(extension.getAgent());
-        extension.getOmitRedundancy().convention(extension.getAgent());
         extension.getJunit().convention(true);
         extension.getJunitReport().convention(project.getLayout().getBuildDirectory()
                 .file("reports/cognitive-java/TEST-cognitive-java.xml"));
@@ -82,13 +79,10 @@ public class CognitiveJavaGradlePlugin implements Plugin<Project> {
                                                       CognitiveJavaCheckTask task,
                                                       CognitiveJavaExtension extension) {
         return project.getProviders().provider(() -> {
-            boolean extensionAgent = extension.getAgent().getOrElse(false);
-            boolean taskAgent = task.getAgent().getOrElse(extensionAgent);
-            String extensionFormat = extension.getFormat().getOrElse(extensionAgent ? "toon" : "none");
-            if (taskAgent != extensionAgent && isDefaultAgentFormat(extensionAgent, extensionFormat)) {
-                return taskAgent ? "toon" : "none";
+            if (extension.getFormat().isPresent()) {
+                return extension.getFormat().get();
             }
-            return extensionFormat;
+            return task.getAgent().getOrElse(extension.getAgent().getOrElse(false)) ? "toon" : "none";
         });
     }
 
@@ -97,17 +91,10 @@ public class CognitiveJavaGradlePlugin implements Plugin<Project> {
                                                             CognitiveJavaExtension extension,
                                                             Property<Boolean> extensionControl) {
         return project.getProviders().provider(() -> {
-            boolean extensionAgent = extension.getAgent().getOrElse(false);
-            boolean extensionValue = extensionControl.getOrElse(extensionAgent);
-            boolean taskAgent = task.getAgent().getOrElse(extensionAgent);
-            if (taskAgent != extensionAgent && extensionValue == extensionAgent) {
-                return taskAgent;
+            if (extensionControl.isPresent()) {
+                return extensionControl.get();
             }
-            return extensionValue;
+            return task.getAgent().getOrElse(extension.getAgent().getOrElse(false));
         });
-    }
-
-    private static boolean isDefaultAgentFormat(boolean agent, String format) {
-        return agent ? "toon".equals(format) : "none".equals(format);
     }
 }

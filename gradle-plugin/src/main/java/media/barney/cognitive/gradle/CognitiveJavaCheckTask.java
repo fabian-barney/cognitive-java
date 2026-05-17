@@ -42,6 +42,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
 public abstract class CognitiveJavaCheckTask extends DefaultTask {
@@ -49,6 +52,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     private static final String LINK_OWNERSHIP = "link";
     private static final String ENCODED_PATH_PREFIX = "path-base64\t";
     private static final int DEFAULT_THRESHOLD = 15;
+    private static final ConcurrentMap<Path, ReentrantLock> IN_PROCESS_STATE_LOCKS = new ConcurrentHashMap<>();
 
     private final Provider<RegularFile> defaultJunitReport;
     private final Provider<RegularFile> executionMarker;
@@ -101,6 +105,12 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
 
     @Internal
     public abstract DirectoryProperty getAnalysisRoot();
+
+    @Input
+    public Provider<String> getAnalysisRootPathInput() {
+        return getAnalysisRoot().map(directory ->
+                directory.getAsFile().toPath().toAbsolutePath().normalize().toString());
+    }
 
     @InputFiles
     @PathSensitive(PathSensitivity.RELATIVE)
@@ -159,18 +169,20 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
 
     @TaskAction
     void runCheck() throws Exception {
+        Path configuredOutputPath = outputPath();
+        Path configuredJunitReportPath = junitReportPath();
+        validateReportOptions(configuredOutputPath, configuredJunitReportPath);
         List<String> sourceArguments = getAnalysisSources().getFiles().stream()
                 .map(file -> getAnalysisRoot().get().getAsFile().toPath().toAbsolutePath().normalize()
                         .relativize(file.toPath().toAbsolutePath().normalize()).toString().replace('\\', '/'))
                 .sorted(Comparator.naturalOrder())
                 .toList();
         if (sourceArguments.isEmpty()) {
+            runWithoutSourcesWithReportStateLock();
+            writeExecutionMarker();
             getLogger().lifecycle("No Java files to analyze.");
             return;
         }
-        Path configuredOutputPath = outputPath();
-        Path configuredJunitReportPath = junitReportPath();
-        validateReportOptions(configuredOutputPath, configuredJunitReportPath);
         int exit = runWithReportStateLock(sourceArguments, configuredOutputPath, configuredJunitReportPath);
         if (exit != 0) {
             throw new GradleException("cognitive-java-check failed with exit " + exit);
@@ -184,11 +196,15 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
             Path configuredJunitReportPath
     ) throws Exception {
         Path lockPath = stateLockPath();
-        Files.createDirectories(lockPath.getParent());
-        try (FileChannel channel = FileChannel.open(lockPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-             FileLock ignored = channel.lock()) {
-            return runAndRememberReports(sourceArguments, configuredOutputPath, configuredJunitReportPath);
-        }
+        return withReportStateLock(lockPath, () ->
+                runAndRememberReports(sourceArguments, configuredOutputPath, configuredJunitReportPath));
+    }
+
+    private void runWithoutSourcesWithReportStateLock() throws Exception {
+        withReportStateLock(stateLockPath(), () -> {
+            cleanupReportsWithoutSources();
+            return null;
+        });
     }
 
     private int runAndRememberReports(
@@ -216,6 +232,15 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
                         junitBefore
                 );
                 throw exception;
+            }
+            if (exit != 0) {
+                rememberChangedReportState(
+                        configuredOutputPath,
+                        configuredJunitReportPath,
+                        outputBefore,
+                        junitBefore
+                );
+                return exit;
             }
             cleanupStaleReports(configuredOutputPath, configuredJunitReportPath);
             rememberReportState(configuredOutputPath, configuredJunitReportPath);
@@ -524,6 +549,13 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         return os.contains("win");
     }
 
+    private void cleanupReportsWithoutSources() throws Exception {
+        deleteRememberedReport(rememberedOutputPath());
+        deleteRememberedReport(rememberedJunitReportPath());
+        deleteReportState(outputStatePath());
+        deleteReportState(junitReportStatePath());
+    }
+
     private void cleanupStaleReports(Path currentOutputPath, Path currentJunitReportPath) throws Exception {
         deleteMovedOutput(currentOutputPath, currentJunitReportPath);
         deleteMovedJunitReport(currentJunitReportPath, currentOutputPath);
@@ -596,6 +628,24 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
 
     private Path stateLockPath() {
         return stateLock.get().getAsFile().toPath().toAbsolutePath().normalize();
+    }
+
+    private ReentrantLock inProcessStateLock(Path lockPath) {
+        return IN_PROCESS_STATE_LOCKS.computeIfAbsent(lockPath, ignored -> new ReentrantLock());
+    }
+
+    private <T> T withReportStateLock(Path lockPath, LockedAction<T> action) throws Exception {
+        Files.createDirectories(lockPath.getParent());
+        ReentrantLock inProcessLock = inProcessStateLock(lockPath);
+        inProcessLock.lock();
+        try {
+            try (FileChannel channel = FileChannel.open(lockPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+                 FileLock ignored = channel.lock()) {
+                return action.run();
+            }
+        } finally {
+            inProcessLock.unlock();
+        }
     }
 
     private void writeExecutionMarker() throws Exception {
@@ -981,5 +1031,10 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         private static ReportSnapshot missing() {
             return new ReportSnapshot(false, 0, 0);
         }
+    }
+
+    @FunctionalInterface
+    private interface LockedAction<T> {
+        T run() throws Exception;
     }
 }
