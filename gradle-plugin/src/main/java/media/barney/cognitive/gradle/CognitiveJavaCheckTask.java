@@ -52,6 +52,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     private static final String LINK_OWNERSHIP = "link";
     private static final String ENCODED_PATH_PREFIX = "path-base64\t";
     private static final int DEFAULT_THRESHOLD = 15;
+    private static final int THRESHOLD_EXCEEDED_EXIT = 2;
     private static final ConcurrentMap<Path, ReentrantLock> IN_PROCESS_STATE_LOCKS = new ConcurrentHashMap<>();
 
     private final Provider<RegularFile> defaultJunitReport;
@@ -233,7 +234,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
                 );
                 throw exception;
             }
-            if (exit != 0) {
+            if (!reportsWereWritten(exit)) {
                 rememberChangedReportState(
                         configuredOutputPath,
                         configuredJunitReportPath,
@@ -246,6 +247,10 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
             rememberReportState(configuredOutputPath, configuredJunitReportPath);
             return exit;
         }
+    }
+
+    private boolean reportsWereWritten(int exit) {
+        return exit == 0 || exit == THRESHOLD_EXCEEDED_EXIT;
     }
 
     private String[] runnerArguments(
@@ -546,7 +551,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
 
     static boolean isLikelyCaseInsensitiveOs() {
         String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        return os.contains("win");
+        return os.startsWith("windows");
     }
 
     private void cleanupReportsWithoutSources() throws Exception {
@@ -980,7 +985,12 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     private boolean sameParentAndFileName(Path first, Path second) throws IOException {
         Path firstParent = first.getParent();
         Path secondParent = second.getParent();
-        return sameParent(firstParent, secondParent) && sameFileName(first, second, firstParent);
+        Path firstFileName = first.getFileName();
+        Path secondFileName = second.getFileName();
+        return firstFileName != null
+                && secondFileName != null
+                && sameParent(firstParent, secondParent)
+                && sameFileName(firstFileName.toString(), secondFileName.toString(), firstParent);
     }
 
     private boolean sameParent(Path firstParent, Path secondParent) throws IOException {
@@ -1010,9 +1020,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         return first.toString().equalsIgnoreCase(second.toString()) && isCaseInsensitive(first);
     }
 
-    private boolean sameFileName(Path first, Path second, Path parent) {
-        String firstName = first.getFileName().toString();
-        String secondName = second.getFileName().toString();
+    private boolean sameFileName(String firstName, String secondName, Path parent) {
         return firstName.equals(secondName) || sameCaseInsensitiveFileName(firstName, secondName, parent);
     }
 

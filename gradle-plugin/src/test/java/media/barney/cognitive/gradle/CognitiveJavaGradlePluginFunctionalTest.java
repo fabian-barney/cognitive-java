@@ -17,6 +17,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class CognitiveJavaGradlePluginFunctionalTest {
 
@@ -157,6 +158,7 @@ class CognitiveJavaGradlePluginFunctionalTest {
 
     @Test
     void disabledJunitRemovesStaleSidecarAndDoesNotWriteNewSidecar() throws Exception {
+        assumeHardLinksAvailable(tempDir);
         Path defaultJunit = tempDir.resolve("build/reports/cognitive-java/TEST-cognitive-java.xml");
         writeSingleModuleProject();
         BuildResult firstResult = runBuild("cognitive-java-check");
@@ -178,6 +180,7 @@ class CognitiveJavaGradlePluginFunctionalTest {
 
     @Test
     void noSourceRunDeletesOwnedReportsAndRefreshesExecutionMarker() throws Exception {
+        assumeHardLinksAvailable(tempDir);
         Path defaultJunit = tempDir.resolve("build/reports/cognitive-java/TEST-cognitive-java.xml");
         Path executionMarker = tempDir.resolve("build/tmp/cognitive-java/cognitive-java-check/execution.marker");
         writeSingleModuleProject();
@@ -200,6 +203,7 @@ class CognitiveJavaGradlePluginFunctionalTest {
 
     @Test
     void primaryOutputCleanupFollowsConfiguredOutputPath() throws Exception {
+        assumeHardLinksAvailable(tempDir);
         Path oldOutput = tempDir.resolve("build/reports/cognitive-java/old-report.json");
         Path newOutput = tempDir.resolve("build/reports/cognitive-java/new-report.json");
         writeSingleModuleProject("""
@@ -260,6 +264,7 @@ class CognitiveJavaGradlePluginFunctionalTest {
 
     @Test
     void failedAnalysisKeepsPreviousOutputWhenReportPathMoves() throws Exception {
+        assumeHardLinksAvailable(tempDir);
         Path oldOutput = tempDir.resolve("build/reports/cognitive-java/old-report.json");
         Path newOutput = tempDir.resolve("build/reports/cognitive-java/new-report.json");
         writeSingleModuleProject("""
@@ -300,6 +305,57 @@ class CognitiveJavaGradlePluginFunctionalTest {
         assertTrue(failedResult.getOutput().contains("cognitive-java-check failed with exit 1"));
         assertTrue(Files.exists(oldOutput));
         assertFalse(Files.exists(newOutput));
+    }
+
+    @Test
+    void thresholdFailureKeepsNewOutputWhenReportPathMoves() throws Exception {
+        assumeHardLinksAvailable(tempDir);
+        Path oldOutput = tempDir.resolve("build/reports/cognitive-java/old-report.json");
+        Path newOutput = tempDir.resolve("build/reports/cognitive-java/new-report.json");
+        writeSingleModuleProject("""
+
+                cognitiveJava {
+                    threshold.set(8)
+                    format.set("json")
+                    output.set(layout.buildDirectory.file("reports/cognitive-java/old-report.json"))
+                }
+                """);
+
+        BuildResult firstResult = runBuild("cognitive-java-check");
+
+        assertEquals(TaskOutcome.SUCCESS, firstResult.task(":cognitive-java-check").getOutcome());
+        assertTrue(Files.exists(oldOutput));
+
+        writeSingleModuleProject("""
+
+                cognitiveJava {
+                    threshold.set(1)
+                    format.set("json")
+                    output.set(layout.buildDirectory.file("reports/cognitive-java/new-report.json"))
+                }
+                """);
+        writeFile("src/main/java/demo/Sample.java", """
+                package demo;
+
+                public class Sample {
+                    public int alpha(boolean first, boolean second) {
+                        if (first) {
+                            if (second) {
+                                return 1;
+                            }
+                            return 2;
+                        }
+                        return 0;
+                    }
+                }
+                """);
+
+        BuildResult failedResult = runBuildAndFail("cognitive-java-check");
+
+        assertTrue(failedResult.getOutput().contains("cognitive-java-check failed with exit 2"));
+        assertFalse(Files.exists(oldOutput));
+        assertTrue(Files.exists(newOutput));
+        assertTrue(Files.readString(newOutput).contains("\"status\": \"failed\""));
     }
 
     @Test
@@ -365,6 +421,19 @@ class CognitiveJavaGradlePluginFunctionalTest {
         Path file = tempDir.resolve(relativePath);
         Files.createDirectories(file.getParent());
         Files.writeString(file, content);
+    }
+
+    private void assumeHardLinksAvailable(Path directory) throws Exception {
+        Path target = Files.createTempFile(directory, ".cognitive-java-hard-link-target-", ".tmp");
+        Path link = target.resolveSibling(target.getFileName() + ".link");
+        try {
+            Files.createLink(link, target);
+        } catch (UnsupportedOperationException | IOException | SecurityException exception) {
+            assumeTrue(false, "Hard links are unavailable: " + exception.getMessage());
+        } finally {
+            Files.deleteIfExists(link);
+            Files.deleteIfExists(target);
+        }
     }
 
     private List<String> reportFileNames(String relativePath) throws IOException {

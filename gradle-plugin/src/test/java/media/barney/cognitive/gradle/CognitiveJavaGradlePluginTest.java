@@ -9,8 +9,10 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -359,6 +361,22 @@ class CognitiveJavaGradlePluginTest {
     }
 
     @Test
+    void runCheckRejectsFilesystemRootBeforeCollisionCheck() throws Exception {
+        List<Path> roots = new ArrayList<>();
+        FileSystems.getDefault().getRootDirectories().forEach(roots::add);
+        assumeTrue(roots.size() >= 2, "This test requires multiple filesystem roots");
+        Path projectRoot = tempDir.toRealPath();
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        task.getFormat().set("json");
+        task.getOutput().fileValue(roots.get(0).toFile());
+        task.getJunitReport().fileValue(roots.get(1).toFile());
+
+        GradleException exception = assertThrows(GradleException.class, task::runCheck);
+
+        assertTrue(exception.getMessage().contains("output must not point to a filesystem root"));
+    }
+
+    @Test
     void runCheckRejectsProjectRootReportPath() throws Exception {
         Path projectRoot = tempDir.toRealPath();
         CognitiveJavaCheckTask task = newCheckTask(projectRoot);
@@ -512,6 +530,7 @@ class CognitiveJavaGradlePluginTest {
     @Test
     void rememberChangedReportStateRecordsNewChangedReports() throws Exception {
         Path projectRoot = tempDir.toRealPath();
+        assumeHardLinksAvailable(projectRoot);
         CognitiveJavaCheckTask task = newCheckTask(projectRoot);
         Path output = projectRoot.resolve("build/reports/cognitive-java/report.json");
         Path junit = projectRoot.resolve("build/reports/cognitive-java/report.xml");
@@ -531,6 +550,7 @@ class CognitiveJavaGradlePluginTest {
     @Test
     void rememberChangedReportStateDeletesMovedUnrememberedReports() throws Exception {
         Path projectRoot = tempDir.toRealPath();
+        assumeHardLinksAvailable(projectRoot);
         CognitiveJavaCheckTask task = newCheckTask(projectRoot);
         Path oldOutput = projectRoot.resolve("build/reports/cognitive-java/old-report.json");
         Path newOutput = projectRoot.resolve("build/reports/cognitive-java/new-report.json");
