@@ -40,6 +40,12 @@ Run the Maven plugin module, including its invoker integration fixtures:
 mvn -B -pl maven-plugin -am verify
 ```
 
+Run the Maven release preflight, including signed sources and Javadocs, without publishing to Central:
+
+```bash
+mvn -B -Prelease -Dcentral.skipPublishing=true -pl .,cli,maven-plugin -am deploy
+```
+
 Consumer repositories should standardize normal validation on:
 
 ```bash
