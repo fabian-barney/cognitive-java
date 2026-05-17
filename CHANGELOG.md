@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Release validation now fails on Maven Javadoc errors and runs a signed Maven publication preflight before release publication.
+
 ## 0.4.0 - 2026-04-10
 
 ### Changed
