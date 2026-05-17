@@ -76,6 +76,23 @@ class CliArgumentsParserTest {
     }
 
     @Test
+    void parsesAllSupportedReportFormats() {
+        assertEquals(ReportFormat.TOON, ReportFormat.parse("toon"));
+        assertEquals(ReportFormat.JSON, ReportFormat.parse("JSON"));
+        assertEquals(ReportFormat.TEXT, ReportFormat.parse("text"));
+        assertEquals(ReportFormat.JUNIT, ReportFormat.parse("junit"));
+        assertEquals(ReportFormat.NONE, ReportFormat.parse("none"));
+    }
+
+    @Test
+    void unknownReportFormatFails() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> ReportFormat.parse("yaml"));
+
+        assertEquals("Unknown report format: yaml", error.getMessage());
+    }
+
+    @Test
     void agentEnablesCompactFailureDefaults() {
         CliArguments args = CliArgumentsParser.parse(new String[]{"--agent"});
 

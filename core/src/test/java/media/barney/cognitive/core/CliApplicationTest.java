@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
@@ -183,6 +184,26 @@ class CliApplicationTest {
         assertEquals(1, exit);
         assertTrue(utf8(err).contains("output and junitReport must not point to the same file"));
         assertFalse(Files.exists(tempDir.resolve("reports/result.xml")));
+    }
+
+    @Test
+    void ioFailuresReturnExitOneWithoutUsage() throws Exception {
+        writeSimpleSource();
+        Files.writeString(tempDir.resolve("reports"), "not a directory");
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
+                .execute(new String[]{
+                        "--output=reports" + File.separator + "result.txt",
+                        "src/main/java/demo/Sample.java"
+                });
+
+        assertEquals(1, exit);
+        assertFalse(utf8(out).contains("Usage:"));
+        assertFalse(utf8(out).contains("Cognitive Complexity Report"));
+        assertFalse(utf8(err).isBlank());
     }
 
     @Test

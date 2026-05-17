@@ -70,8 +70,8 @@ class ReportFormatterTest {
 
     private static CognitiveReport report() {
         return CognitiveReport.from(List.of(
-                metric("low", "demo.Low", "src/main/java/demo/Low.java", 4, 6, 2),
-                metric("high", "demo.High", "src/main/java/demo/High.java", 4, 8, 16)
+                metric("high", "demo.High", "src/main/java/demo/High.java", 4, 8, 16),
+                metric("low", "demo.Low", "src/main/java/demo/Low.java", 4, 6, 2)
         ), 15).withElapsedNanos(250_000_000);
     }
 

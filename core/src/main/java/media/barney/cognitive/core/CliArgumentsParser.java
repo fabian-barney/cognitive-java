@@ -56,28 +56,7 @@ final class CliArgumentsParser {
     }
 
     private static int parseOption(String[] args, int index, ParseStateBuilder state, String arg) {
-        if ("--help".equals(arg)) {
-            if (state.helpSeen) {
-                throw new IllegalArgumentException("--help can only be provided once");
-            }
-            state.help = true;
-            state.helpSeen = true;
-            return index;
-        }
-        if ("--changed".equals(arg)) {
-            if (state.changedSeen) {
-                throw new IllegalArgumentException("--changed can only be provided once");
-            }
-            state.changed = true;
-            state.changedSeen = true;
-            return index;
-        }
-        if ("--agent".equals(arg)) {
-            if (state.agentSeen) {
-                throw new IllegalArgumentException("--agent can only be provided once");
-            }
-            state.agent = true;
-            state.agentSeen = true;
+        if (parseExactOption(state, arg)) {
             return index;
         }
         if (isBooleanOption(arg, "--failures-only")) {
@@ -91,6 +70,32 @@ final class CliArgumentsParser {
             return index;
         }
         return parseValuedOption(args, index, state, arg);
+    }
+
+    private static boolean parseExactOption(ParseStateBuilder state, String arg) {
+        return switch (arg) {
+            case "--help" -> setFlag(state.helpSeen, "--help", () -> {
+                state.help = true;
+                state.helpSeen = true;
+            });
+            case "--changed" -> setFlag(state.changedSeen, "--changed", () -> {
+                state.changed = true;
+                state.changedSeen = true;
+            });
+            case "--agent" -> setFlag(state.agentSeen, "--agent", () -> {
+                state.agent = true;
+                state.agentSeen = true;
+            });
+            default -> false;
+        };
+    }
+
+    private static boolean setFlag(boolean seen, String option, Runnable setter) {
+        if (seen) {
+            throw new IllegalArgumentException(option + " can only be provided once");
+        }
+        setter.run();
+        return true;
     }
 
     private static int parseValuedOption(String[] args, int index, ParseStateBuilder state, String arg) {

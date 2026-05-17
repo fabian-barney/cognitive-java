@@ -1,5 +1,6 @@
 package media.barney.cognitive.core;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -53,6 +54,9 @@ final class CliApplication {
                 return 2;
             }
             return 0;
+        } catch (IOException | SecurityException ex) {
+            err.println(ex.getMessage());
+            return 1;
         } catch (IllegalArgumentException ex) {
             err.println(ex.getMessage());
             return 1;

@@ -40,20 +40,29 @@ record ReportOptions(
     }
 
     private static void validateReportPath(Path root, String name, Path path) {
+        ensureFileLikeTarget(root, name, path);
+        ensureInsideProjectRoot(root, name, path);
+        ensureNotDirectory(name, path);
+    }
+
+    private static void ensureFileLikeTarget(Path root, String name, Path path) {
         if (path.getFileName() == null) {
             throw new IllegalArgumentException(name + " must not point to a filesystem root");
         }
         if (path.equals(root)) {
             throw new IllegalArgumentException(name + " must not point to the project root");
         }
-        if (!path.startsWith(root)) {
+    }
+
+    private static void ensureInsideProjectRoot(Path root, String name, Path path) {
+        if (!path.startsWith(root) || resolvesOutsideRoot(root, path)) {
             throw new IllegalArgumentException(name + " must stay inside the project root");
         }
+    }
+
+    private static void ensureNotDirectory(String name, Path path) {
         if (Files.isDirectory(path)) {
             throw new IllegalArgumentException(name + " must not point to a directory");
-        }
-        if (resolvesOutsideRoot(root, path)) {
-            throw new IllegalArgumentException(name + " must stay inside the project root");
         }
     }
 
@@ -64,20 +73,41 @@ record ReportOptions(
     }
 
     private static boolean sameReportTarget(Path first, Path second) {
-        if (first.equals(second)) {
-            return true;
-        }
+        return first.equals(second) || sameDistinctReportTarget(first, second);
+    }
+
+    private static boolean sameDistinctReportTarget(Path first, Path second) {
+        return sameExistingFileOrFalse(first, second)
+                || sameAliasedTargetOrFalse(first, second);
+    }
+
+    private static boolean sameExistingFileOrFalse(Path first, Path second) {
         try {
-            return sameExistingFile(first, second)
-                    || sameRealPath(first, second)
-                    || sameParentAndFileName(first, second);
+            return sameExistingFile(first, second);
         } catch (IOException exception) {
             return false;
         }
     }
 
+    private static boolean sameAliasedTargetOrFalse(Path first, Path second) {
+        try {
+            return sameAliasedTarget(first, second);
+        } catch (IOException exception) {
+            return false;
+        }
+    }
+
+    private static boolean sameAliasedTarget(Path first, Path second) throws IOException {
+        return sameRealPath(first, second)
+                || sameParentAndFileName(first, second);
+    }
+
     private static boolean sameExistingFile(Path first, Path second) throws IOException {
-        return Files.exists(first) && Files.exists(second) && Files.isSameFile(first, second);
+        return bothExist(first, second) && Files.isSameFile(first, second);
+    }
+
+    private static boolean bothExist(Path first, Path second) {
+        return Files.exists(first) && Files.exists(second);
     }
 
     private static boolean sameParentAndFileName(Path first, Path second) throws IOException {
@@ -87,9 +117,16 @@ record ReportOptions(
     }
 
     private static boolean sameParent(@Nullable Path firstParent, @Nullable Path secondParent) throws IOException {
-        return (firstParent == null || secondParent == null)
-                ? Objects.equals(firstParent, secondParent)
-                : sameNonNullParent(firstParent, secondParent);
+        if (hasNullParent(firstParent, secondParent)) {
+            return Objects.equals(firstParent, secondParent);
+        }
+        Path nonNullFirstParent = Objects.requireNonNull(firstParent);
+        Path nonNullSecondParent = Objects.requireNonNull(secondParent);
+        return sameNonNullParent(nonNullFirstParent, nonNullSecondParent);
+    }
+
+    private static boolean hasNullParent(@Nullable Path firstParent, @Nullable Path secondParent) {
+        return firstParent == null || secondParent == null;
     }
 
     private static boolean sameNonNullParent(Path firstParent, Path secondParent) throws IOException {
@@ -98,9 +135,13 @@ record ReportOptions(
     }
 
     private static boolean sameAliasedParent(Path firstParent, Path secondParent) throws IOException {
-        return sameExistingFile(firstParent, secondParent)
-                || sameRealPath(firstParent, secondParent)
+        return sameFilesystemTarget(firstParent, secondParent)
                 || sameCaseInsensitivePath(firstParent, secondParent);
+    }
+
+    private static boolean sameFilesystemTarget(Path first, Path second) throws IOException {
+        return sameExistingFile(first, second)
+                || sameRealPath(first, second);
     }
 
     private static boolean sameRealPath(Path first, Path second) {
@@ -148,8 +189,16 @@ record ReportOptions(
     private static boolean sameFileName(Path first, Path second, @Nullable Path parent) {
         String firstName = first.getFileName().toString();
         String secondName = second.getFileName().toString();
-        return firstName.equals(secondName)
-                || (firstName.equalsIgnoreCase(secondName) && isCaseInsensitive(parent));
+        if (firstName.equals(secondName)) {
+            return true;
+        }
+        return sameCaseInsensitiveFileName(firstName, secondName, parent);
+    }
+
+    private static boolean sameCaseInsensitiveFileName(String firstName,
+                                                       String secondName,
+                                                       @Nullable Path parent) {
+        return firstName.equalsIgnoreCase(secondName) && isCaseInsensitive(parent);
     }
 
     private static boolean isCaseInsensitive(@Nullable Path path) {

@@ -17,7 +17,6 @@ import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;
 import dev.toonformat.jtoon.JToon;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import org.jspecify.annotations.Nullable;
@@ -55,13 +54,12 @@ final class ReportFormatter {
     }
 
     private static String formatText(CognitiveReport report, boolean omitRedundancy) {
-        List<CognitiveReport.MethodReport> sorted = sortedMethods(report.methods());
         StringBuilder builder = new StringBuilder();
         builder.append("Cognitive Complexity Report\n");
         builder.append("===========================\n");
         builder.append("Status: ").append(report.status()).append('\n');
         builder.append("Threshold: ").append(report.threshold()).append('\n');
-        appendMethodTable(builder, omitRedundancy ? methodTextColumns() : fullTextColumns(), sorted);
+        appendMethodTable(builder, omitRedundancy ? methodTextColumns() : fullTextColumns(), report.methods());
         return builder.toString();
     }
 
@@ -155,7 +153,7 @@ final class ReportFormatter {
         return new JsonReport(
                 report.status(),
                 report.threshold(),
-                sortedMethods(report.methods()).stream()
+                report.methods().stream()
                         .map(method -> jsonMethod(method, omitRedundancy))
                         .toList()
         );
@@ -181,7 +179,7 @@ final class ReportFormatter {
     }
 
     private static JunitTestSuites junitTestSuites(CognitiveReport report, boolean omitRedundancy) {
-        List<CognitiveReport.MethodReport> methods = sortedMethods(report.methods());
+        List<CognitiveReport.MethodReport> methods = report.methods();
         int failed = countFailed(methods);
         String suiteTime = formatTime(report.elapsedSeconds());
         String testCaseTime = formatTime(methods.isEmpty() ? 0.0 : report.elapsedSeconds() / methods.size());
@@ -280,17 +278,6 @@ final class ReportFormatter {
                 "Source: " + method.sourcePath() + ":" + method.startLine() + "-" + method.endLine(),
                 "Method: " + method.methodName()
         );
-    }
-
-    private static List<CognitiveReport.MethodReport> sortedMethods(List<CognitiveReport.MethodReport> entries) {
-        List<CognitiveReport.MethodReport> sorted = new ArrayList<>(entries);
-        sorted.sort(Comparator
-                .comparingInt(CognitiveReport.MethodReport::complexity)
-                .reversed()
-                .thenComparing(CognitiveReport.MethodReport::sourcePath)
-                .thenComparing(CognitiveReport.MethodReport::methodName)
-                .thenComparingInt(CognitiveReport.MethodReport::startLine));
-        return sorted;
     }
 
     private static CognitiveReport failuresOnly(CognitiveReport report) {
