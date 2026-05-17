@@ -17,9 +17,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 @Mojo(name = "check", defaultPhase = LifecyclePhase.VERIFY, aggregator = true, threadSafe = true)
 public class CognitiveJavaCheckMojo extends AbstractMojo {
+
+    private static final Set<String> VALID_FORMATS = Set.of("toon", "json", "text", "junit", "none");
 
     private final CognitiveJavaRunner runner;
 
@@ -74,9 +77,10 @@ public class CognitiveJavaCheckMojo extends AbstractMojo {
 
     private void runCheck(Path executionRoot) throws MojoExecutionException, MojoFailureException {
         try {
+            String[] args = reportArgs(executionRoot);
             try (var out = MavenLoggingPrintStreams.standardOut(getLog());
                  var err = MavenLoggingPrintStreams.standardErr(getLog())) {
-                int exit = runner.run(reportArgs(executionRoot), executionRoot, out, err);
+                int exit = runner.run(args, executionRoot, out, err);
                 handleExitCode(exit);
             }
         } catch (MojoFailureException | MojoExecutionException ex) {
@@ -91,7 +95,7 @@ public class CognitiveJavaCheckMojo extends AbstractMojo {
     private String[] reportArgs(Path executionRoot) {
         List<String> args = new ArrayList<>();
         args.add("--format");
-        args.add(format);
+        args.add(validatedFormat());
         if (agent) {
             args.add("--agent");
         }
@@ -116,6 +120,14 @@ public class CognitiveJavaCheckMojo extends AbstractMojo {
             case "false" -> false;
             default -> throw new IllegalArgumentException("cognitiveJava.junit must be true or false");
         };
+    }
+
+    private String validatedFormat() {
+        String trimmed = format.trim();
+        if (!format.equals(trimmed) || !VALID_FORMATS.contains(trimmed)) {
+            throw new IllegalArgumentException("cognitiveJava.format must be one of: toon, json, text, junit, none");
+        }
+        return trimmed;
     }
 
     private static void addOptionalBooleanArgument(List<String> args, String option, @Nullable String value) {

@@ -253,9 +253,9 @@ class CognitiveJavaCheckMojoTest {
 
         MojoExecutionException ex = assertThrows(MojoExecutionException.class, mojo::execute);
 
-        assertEquals("cognitive-java check failed with exit 1", ex.getMessage());
-        assertTrue(log.warnMessages.stream().anyMatch(message -> message.contains("Unknown report format: yaml")));
-        assertTrue(log.infoMessages.stream().anyMatch(message -> message.contains("Usage:")));
+        assertEquals("cognitiveJava.format must be one of: toon, json, text, junit, none", ex.getMessage());
+        assertTrue(log.warnMessages.isEmpty());
+        assertTrue(log.infoMessages.isEmpty());
     }
 
     @Test
