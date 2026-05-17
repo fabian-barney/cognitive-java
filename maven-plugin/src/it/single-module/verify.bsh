@@ -1,1 +1,23 @@
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+Path root = basedir.toPath();
+Path junitReport = root.resolve("target/cognitive-java/TEST-cognitive-java.xml");
+if (!Files.exists(junitReport)) {
+    throw new RuntimeException("Missing default JUnit sidecar");
+}
+
+String junit = Files.readString(junitReport);
+if (!junit.contains("<testsuites")) {
+    throw new RuntimeException("Default JUnit sidecar should contain testsuites output");
+}
+if (!junit.contains("classname=\"demo.Sample\"")) {
+    throw new RuntimeException("Default JUnit sidecar should include the analyzed class");
+}
+if (!junit.contains("<property name=\"status\" value=\"passed\"/>")) {
+    throw new RuntimeException("Default JUnit sidecar should include method status");
+}
+if (Files.exists(root.resolve("target/cognitive-java/report.json"))) {
+    throw new RuntimeException("Default configuration should not create a primary report file");
+}
 return true;
