@@ -54,10 +54,7 @@ final class CliApplication {
                 return 2;
             }
             return 0;
-        } catch (IOException | SecurityException ex) {
-            err.println(ex.getMessage());
-            return 1;
-        } catch (IllegalArgumentException ex) {
+        } catch (IOException | SecurityException | IllegalArgumentException ex) {
             err.println(ex.getMessage());
             return 1;
         }

@@ -27,7 +27,7 @@ public final class Main {
                 Usage:
                   cognitive-java            Analyze all Java files under any nested src/main/java tree
                   cognitive-java --changed  Analyze changed Java files under any nested src/main/java tree
-                  cognitive-java <path...> Analyze files, or for directory args analyze nested src/main/java trees under each path
+                  cognitive-java <path...>  Analyze files, or for directory args analyze nested src/main/java trees under each path
                   cognitive-java --help     Print this help message
 
                 Options:

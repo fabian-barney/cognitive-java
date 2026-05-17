@@ -216,7 +216,7 @@ final class ReportFormatter {
                                                boolean omitRedundancy,
                                                String time) {
         return new JunitTestCase(
-                method.sourcePath(),
+                method.className(),
                 testcaseName(method),
                 method.sourcePath(),
                 method.startLine(),
