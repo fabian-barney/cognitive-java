@@ -1,1 +1,22 @@
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+Path root = basedir.toPath();
+Path rootJunit = root.resolve("target/cognitive-java/TEST-cognitive-java.xml");
+Path moduleAJunit = root.resolve("module-a/target/cognitive-java/TEST-cognitive-java.xml");
+Path moduleBJunit = root.resolve("module-b/target/cognitive-java/TEST-cognitive-java.xml");
+if (!Files.exists(rootJunit)) {
+    throw new RuntimeException("Missing root JUnit sidecar");
+}
+if (Files.exists(moduleAJunit) || Files.exists(moduleBJunit)) {
+    throw new RuntimeException("Root-only execution should not create module-local JUnit sidecars");
+}
+
+String junit = Files.readString(rootJunit);
+if (!junit.contains("classname=\"demo.a.ModuleASample\"")) {
+    throw new RuntimeException("Root JUnit sidecar should include module-a methods");
+}
+if (!junit.contains("classname=\"demo.b.ModuleBSample\"")) {
+    throw new RuntimeException("Root JUnit sidecar should include module-b methods");
+}
 return true;

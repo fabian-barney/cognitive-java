@@ -1,0 +1,41 @@
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+Path root = basedir.toPath();
+Path primaryReport = root.resolve("target/cognitive-java/report.json");
+Path junitReport = root.resolve("target/cognitive-java/custom-junit.xml");
+if (!Files.exists(primaryReport)) {
+    throw new RuntimeException("Missing configured primary report");
+}
+if (!Files.exists(junitReport)) {
+    throw new RuntimeException("Missing configured JUnit sidecar");
+}
+if (Files.exists(root.resolve("target/cognitive-java/TEST-cognitive-java.xml"))) {
+    throw new RuntimeException("Configured junitReport should replace the default sidecar path");
+}
+
+String primary = Files.readString(primaryReport);
+if (!primary.contains("\"status\": \"passed\"")) {
+    throw new RuntimeException("Configured primary report is missing top-level status");
+}
+if (!primary.contains("\"threshold\": 9")) {
+    throw new RuntimeException("Configured primary report should use the configured threshold");
+}
+if (!primary.contains("\"method\": \"alpha\"")) {
+    throw new RuntimeException("Configured primary report should include passing methods when failuresOnly is false");
+}
+if (primary.contains("      \"status\":")) {
+    throw new RuntimeException("Configured primary report should omit redundant method statuses");
+}
+
+String junit = Files.readString(junitReport);
+if (!junit.contains("<testsuites")) {
+    throw new RuntimeException("Configured JUnit sidecar should contain testsuites output");
+}
+if (!junit.contains("classname=\"demo.Sample\"")) {
+    throw new RuntimeException("Configured JUnit sidecar should include the analyzed class");
+}
+if (!junit.contains("<property name=\"status\" value=\"passed\"/>")) {
+    throw new RuntimeException("Configured JUnit sidecar should not omit method status");
+}
+return true;
