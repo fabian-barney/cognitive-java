@@ -27,6 +27,7 @@ class MainTest {
         assertEquals(0, exit);
         assertTrue(utf8(out).contains("Usage:"));
         assertTrue(utf8(out).contains("cognitive-java --changed"));
+        assertTrue(utf8(out).contains("Exit codes:"));
     }
 
     @Test
@@ -84,6 +85,7 @@ class MainTest {
         assertEquals(0, exit);
         assertTrue(utf8(out).contains("Sample"));
         assertTrue(utf8(out).contains("alpha"));
+        assertTrue(utf8(out).contains("src/main/java/demo/Sample.java"));
     }
 
     @Test
@@ -116,9 +118,9 @@ class MainTest {
     @Test
     void maxCognitiveComplexityReturnsLargestScore() {
         List<MethodMetrics> metrics = List.of(
-                new MethodMetrics("alpha", "demo.Sample", 1),
-                new MethodMetrics("beta", "demo.Sample", 5),
-                new MethodMetrics("gamma", "demo.Sample", 3)
+                new MethodMetrics("alpha", "demo.Sample", "Sample.java", 1, 3, 1),
+                new MethodMetrics("beta", "demo.Sample", "Sample.java", 4, 6, 5),
+                new MethodMetrics("gamma", "demo.Sample", "Sample.java", 7, 9, 3)
         );
 
         assertEquals(5, Main.maxCognitiveComplexity(metrics));

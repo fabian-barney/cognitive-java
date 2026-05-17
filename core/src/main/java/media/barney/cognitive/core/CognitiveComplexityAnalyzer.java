@@ -22,13 +22,18 @@ final class CognitiveComplexityAnalyzer {
     }
 
     static List<MethodMetrics> analyze(List<Path> files) throws IOException {
+        return analyze(Path.of(".").toAbsolutePath().normalize(), files);
+    }
+
+    static List<MethodMetrics> analyze(Path projectRoot, List<Path> files) throws IOException {
         List<ParsedMethod> parsedMethods = new ArrayList<>();
+        Path root = projectRoot.toAbsolutePath().normalize();
         for (Path file : files) {
-            Path normalized = file.normalize();
+            Path normalized = file.toAbsolutePath().normalize();
             if (!Files.isRegularFile(normalized)) {
                 throw new IllegalArgumentException("Source file does not exist: " + normalized);
             }
-            parsedMethods.addAll(JavaMethodParser.parseDetailed(sourceName(normalized), Files.readString(normalized)));
+            parsedMethods.addAll(JavaMethodParser.parseDetailed(sourceName(root, normalized), Files.readString(normalized)));
         }
         return metricsForParsedMethods(parsedMethods);
     }
@@ -47,13 +52,20 @@ final class CognitiveComplexityAnalyzer {
         for (ParsedMethod parsedMethod : parsedMethods) {
             int cognitiveComplexity = parsedMethod.baseCognitiveComplexity()
                     + (recursiveMethodIds.contains(parsedMethod.id()) ? 1 : 0);
-            metrics.add(new MethodMetrics(parsedMethod.methodName(), parsedMethod.className(), cognitiveComplexity));
+            metrics.add(new MethodMetrics(
+                    parsedMethod.methodName(),
+                    parsedMethod.className(),
+                    parsedMethod.sourcePath(),
+                    parsedMethod.startLine(),
+                    parsedMethod.endLine(),
+                    cognitiveComplexity));
         }
         metrics.sort(Comparator
                 .comparingInt(MethodMetrics::cognitiveComplexity)
                 .reversed()
-                .thenComparing(MethodMetrics::className)
-                .thenComparing(MethodMetrics::methodName));
+                .thenComparing(MethodMetrics::sourcePath)
+                .thenComparing(MethodMetrics::methodName)
+                .thenComparingInt(MethodMetrics::startLine));
         return metrics;
     }
 
@@ -169,8 +181,9 @@ final class CognitiveComplexityAnalyzer {
         return packageName.isEmpty() ? className : packageName + "." + className;
     }
 
-    private static String sourceName(Path file) {
-        return file.toString().replace('\\', '/');
+    private static String sourceName(Path projectRoot, Path file) {
+        Path sourcePath = file.startsWith(projectRoot) ? projectRoot.relativize(file) : file;
+        return sourcePath.toString().replace('\\', '/');
     }
 
     private static final class Tarjan {

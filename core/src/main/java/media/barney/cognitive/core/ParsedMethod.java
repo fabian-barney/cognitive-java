@@ -6,6 +6,7 @@ record ParsedMethod(
         String packageName,
         String className,
         String methodName,
+        String sourcePath,
         int arity,
         int startLine,
         int endLine,
@@ -21,6 +22,6 @@ record ParsedMethod(
     }
 
     String id() {
-        return className + "#" + methodName + "/" + arity + ":" + startLine;
+        return sourcePath + "#" + className + "#" + methodName + "/" + arity + ":" + startLine;
     }
 }

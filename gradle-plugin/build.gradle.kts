@@ -52,6 +52,8 @@ abstract class VerifyCoreJarTask : DefaultTask() {
 val projectVersion = version.toString()
 val coreJar = layout.projectDirectory.file("../core/target/cognitive-java-core-${projectVersion}.jar")
 val junitVersion = parentPomProperty("junit.version")
+val jtoonVersion = parentPomProperty("jtoon.version")
+val jacksonVersion = parentPomProperty("jackson.version")
 val gpgPrivateKey = providers.environmentVariable("MAVEN_GPG_PRIVATE_KEY")
 val gpgPassphrase = providers.environmentVariable("MAVEN_GPG_PASSPHRASE")
 val mavenCentralTokenUsername = providers.gradleProperty("mavenCentralTokenUsername")
@@ -74,6 +76,10 @@ tasks.withType<JavaCompile>().configureEach {
 
 dependencies {
     implementation(files(coreJar.asFile))
+    implementation("dev.toonformat:jtoon:$jtoonVersion")
+    implementation(platform("com.fasterxml.jackson:jackson-bom:$jacksonVersion"))
+    implementation("com.fasterxml.jackson.core:jackson-databind")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
     testImplementation(platform("org.junit:junit-bom:$junitVersion"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation(gradleTestKit())

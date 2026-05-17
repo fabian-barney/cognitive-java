@@ -47,6 +47,8 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>6.0.3</junit.version>
     <jspecify.version>1.0.0</jspecify.version>
+    <jtoon.version>1.0.9</jtoon.version>
+    <jackson.version>2.21.3</jackson.version>
     <errorprone.version>2.49.0</errorprone.version>
     <nullaway.version>0.13.4</nullaway.version>
     <maven.source.plugin.version>3.4.0</maven.source.plugin.version>
@@ -62,6 +64,13 @@
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
         <version>${junit.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${jackson.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>

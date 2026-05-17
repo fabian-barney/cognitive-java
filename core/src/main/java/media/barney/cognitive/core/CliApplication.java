@@ -1,5 +1,6 @@
 package media.barney.cognitive.core;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -8,20 +9,25 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.LongSupplier;
 import org.jspecify.annotations.Nullable;
 
 final class CliApplication {
 
-    private static final int COGNITIVE_COMPLEXITY_THRESHOLD = 15;
-
     private final Path projectRoot;
     private final PrintStream out;
     private final PrintStream err;
+    private final LongSupplier nanoTime;
 
     CliApplication(Path projectRoot, PrintStream out, PrintStream err) {
+        this(projectRoot, out, err, System::nanoTime);
+    }
+
+    CliApplication(Path projectRoot, PrintStream out, PrintStream err, LongSupplier nanoTime) {
         this.projectRoot = projectRoot;
         this.out = out;
         this.err = err;
+        this.nanoTime = nanoTime;
     }
 
     int execute(String[] args) throws Exception {
@@ -30,32 +36,32 @@ final class CliApplication {
             return parse.exitCode;
         }
 
+        long startedAt = nanoTime.getAsLong();
         CliArguments parsed = parse.arguments();
         try {
+            ReportOptions options = reportOptions(parsed);
             List<Path> filesToAnalyze = filesForMode(parsed);
-            if (filesToAnalyze.isEmpty()) {
-                out.println("No Java files to analyze.");
-                return 0;
-            }
-
-            List<MethodMetrics> metrics = CognitiveComplexityAnalyzer.analyze(filesToAnalyze);
-            out.print(ReportFormatter.format(metrics));
+            List<MethodMetrics> metrics = filesToAnalyze.isEmpty()
+                    ? List.of()
+                    : CognitiveComplexityAnalyzer.analyze(projectRoot, filesToAnalyze);
+            CognitiveReport report = CognitiveReport.from(metrics, parsed.threshold())
+                    .withElapsedNanos(nanoTime.getAsLong() - startedAt);
+            ReportPublisher.publish(report, options, out);
 
             int max = Main.maxCognitiveComplexity(metrics);
-            if (thresholdExceeded(max)) {
-                err.printf("Cognitive Complexity threshold exceeded: %d > %d%n", max,
-                        COGNITIVE_COMPLEXITY_THRESHOLD);
+            if (thresholdExceeded(max, parsed.threshold())) {
+                err.printf("Cognitive Complexity threshold exceeded: %d > %d%n", max, parsed.threshold());
                 return 2;
             }
             return 0;
-        } catch (IllegalArgumentException ex) {
+        } catch (IOException | SecurityException | IllegalArgumentException ex) {
             err.println(ex.getMessage());
             return 1;
         }
     }
 
-    static boolean thresholdExceeded(int max) {
-        return max > COGNITIVE_COMPLEXITY_THRESHOLD;
+    static boolean thresholdExceeded(int max, int threshold) {
+        return max > threshold;
     }
 
     private ParseOutcome parseArguments(String[] args) {
@@ -78,6 +84,17 @@ final class CliApplication {
             return explicitFiles(parsed.fileArgs());
         }
         return nonExplicitFiles(parsed.mode());
+    }
+
+    private ReportOptions reportOptions(CliArguments parsed) {
+        return ReportOptions.create(
+                projectRoot,
+                parsed.reportFormat(),
+                parsed.failuresOnly(),
+                parsed.omitRedundancy(),
+                parsed.outputPath(),
+                parsed.junitReportPath()
+        );
     }
 
     private List<Path> nonExplicitFiles(CliMode mode) throws Exception {
