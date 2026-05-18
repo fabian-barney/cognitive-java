@@ -22,6 +22,10 @@ public class CognitiveJavaGradlePlugin implements Plugin<Project> {
         extension.getJunit().convention(true);
         extension.getJunitReport().convention(project.getLayout().getBuildDirectory()
                 .file("reports/cognitive-java/TEST-cognitive-java.xml"));
+        extension.getExcludes().convention(List.of());
+        extension.getExcludeClasses().convention(List.of());
+        extension.getExcludeAnnotations().convention(List.of());
+        extension.getUseDefaultExclusions().convention(true);
 
         TaskProvider<CognitiveJavaCheckTask> checkTask = project.getTasks().register(
                 "cognitive-java-check",
@@ -40,6 +44,10 @@ public class CognitiveJavaGradlePlugin implements Plugin<Project> {
                     task.getOutput().convention(extension.getOutput());
                     task.getJunit().convention(extension.getJunit());
                     task.getJunitReport().convention(extension.getJunitReport());
+                    task.getExcludes().convention(extension.getExcludes());
+                    task.getExcludeClasses().convention(extension.getExcludeClasses());
+                    task.getExcludeAnnotations().convention(extension.getExcludeAnnotations());
+                    task.getUseDefaultExclusions().convention(extension.getUseDefaultExclusions());
                     task.getAnalysisMetadata().from(
                             project.getLayout().getProjectDirectory().file("settings.gradle"),
                             project.getLayout().getProjectDirectory().file("settings.gradle.kts"),

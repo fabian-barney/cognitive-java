@@ -14,6 +14,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 final class CognitiveComplexityAnalyzer {
@@ -36,6 +37,35 @@ final class CognitiveComplexityAnalyzer {
             parsedMethods.addAll(JavaMethodParser.parseDetailed(sourceName(root, normalized), Files.readString(normalized)));
         }
         return metricsForParsedMethods(parsedMethods);
+    }
+
+    static List<MethodMetrics> analyze(Path projectRoot,
+                                       List<Path> files,
+                                       SourceExclusionMatcher exclusions,
+                                       SourceExclusionAudit.Builder audit) throws IOException {
+        List<ParsedMethod> includedMethods = new ArrayList<>();
+        Set<String> excludedClasses = new LinkedHashSet<>();
+        Path root = projectRoot.toAbsolutePath().normalize();
+        for (Path file : files) {
+            Path normalized = file.toAbsolutePath().normalize();
+            if (!Files.isRegularFile(normalized)) {
+                throw new IllegalArgumentException("Source file does not exist: " + normalized);
+            }
+            for (ParsedMethod parsedMethod : JavaMethodParser.parseDetailed(sourceName(root, normalized), Files.readString(normalized))) {
+                Optional<String> classExclusion = exclusions.classExclusionReason(
+                        parsedMethod.className(),
+                        parsedMethod.classAnnotations());
+                if (classExclusion.isPresent()) {
+                    if (excludedClasses.add(parsedMethod.className())) {
+                        audit.recordExcludedClass(classExclusion.get());
+                    }
+                    continue;
+                }
+                includedMethods.add(parsedMethod);
+            }
+        }
+        audit.recordAnalyzedMethods(includedMethods.size());
+        return metricsForParsedMethods(includedMethods);
     }
 
     static List<MethodMetrics> analyzeSources(Map<String, String> sources) {

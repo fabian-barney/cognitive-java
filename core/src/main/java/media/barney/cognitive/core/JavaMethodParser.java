@@ -138,6 +138,7 @@ final class JavaMethodParser {
         private final SourcePositions positions;
         private final List<ParsedMethod> methods;
         private final Deque<String> classNames = new ArrayDeque<>();
+        private final Deque<List<String>> classAnnotations = new ArrayDeque<>();
 
         private MethodScanner(CompilationUnitTree unit,
                               String packageName,
@@ -158,9 +159,11 @@ final class JavaMethodParser {
                 return null;
             }
             classNames.addLast(simpleName);
+            classAnnotations.addLast(classAnnotations(node));
             try {
                 return super.visitClass(node, null);
             } finally {
+                classAnnotations.removeLast();
                 classNames.removeLast();
             }
         }
@@ -182,14 +185,25 @@ final class JavaMethodParser {
                     node.getParameters().size(),
                     lineNumber(start),
                     lineNumber(Math.max(start, bodyEndExclusive - 1)),
+                    currentClassAnnotations(),
                     analysis.cognitiveComplexity(),
                     analysis.calls()));
             return null;
         }
 
+        private static List<String> classAnnotations(ClassTree node) {
+            return node.getModifiers().getAnnotations().stream()
+                    .map(annotation -> annotation.getAnnotationType().toString())
+                    .toList();
+        }
+
         private String currentClassName() {
             String nestedClassName = String.join(".", classNames);
             return packageName.isEmpty() ? nestedClassName : packageName + "." + nestedClassName;
+        }
+
+        private List<String> currentClassAnnotations() {
+            return classAnnotations.isEmpty() ? List.of() : classAnnotations.getLast();
         }
 
         private int lineNumber(long position) {

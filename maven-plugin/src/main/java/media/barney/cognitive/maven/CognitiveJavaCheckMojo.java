@@ -56,6 +56,27 @@ public class CognitiveJavaCheckMojo extends AbstractMojo {
     @Parameter(property = "cognitiveJava.threshold", defaultValue = "15")
     private String threshold = "15";
 
+    @Parameter
+    private List<String> excludes = new ArrayList<>();
+
+    @Parameter(property = "cognitiveJava.excludes")
+    private @Nullable String excludesProperty;
+
+    @Parameter
+    private List<String> excludeClasses = new ArrayList<>();
+
+    @Parameter(property = "cognitiveJava.excludeClasses")
+    private @Nullable String excludeClassesProperty;
+
+    @Parameter
+    private List<String> excludeAnnotations = new ArrayList<>();
+
+    @Parameter(property = "cognitiveJava.excludeAnnotations")
+    private @Nullable String excludeAnnotationsProperty;
+
+    @Parameter(property = "cognitiveJava.useDefaultExclusions", defaultValue = "true")
+    private boolean useDefaultExclusions = true;
+
     public CognitiveJavaCheckMojo() {
         this(Main::run);
     }
@@ -101,6 +122,12 @@ public class CognitiveJavaCheckMojo extends AbstractMojo {
         }
         addOptionalBooleanArgument(args, "--failures-only", failuresOnly);
         addOptionalBooleanArgument(args, "--omit-redundancy", omitRedundancy);
+        addRepeated(args, "--exclude", excludesProperty, excludes);
+        addRepeated(args, "--exclude-class", excludeClassesProperty, excludeClasses);
+        addRepeated(args, "--exclude-annotation", excludeAnnotationsProperty, excludeAnnotations);
+        if (!useDefaultExclusions) {
+            args.add("--use-default-exclusions=false");
+        }
         if (output != null) {
             args.add("--output");
             args.add(configuredPath(executionRoot, output).toString());
@@ -135,6 +162,63 @@ public class CognitiveJavaCheckMojo extends AbstractMojo {
             return;
         }
         args.add(option + "=" + value);
+    }
+
+    private static void addRepeated(List<String> args, String option, @Nullable String propertyValue, List<String> values) {
+        for (String value : configuredValues(propertyValue, values)) {
+            args.add(option);
+            args.add(value);
+        }
+    }
+
+    private static List<String> configuredValues(@Nullable String propertyValue, List<String> values) {
+        List<String> configured = new ArrayList<>();
+        configured.addAll(commaSeparatedPropertyValues(propertyValue));
+        configured.addAll(configuredListValues(values));
+        return configured;
+    }
+
+    private static List<String> commaSeparatedPropertyValues(@Nullable String propertyValue) {
+        if (propertyValue == null) {
+            return List.of();
+        }
+        return splitEscapedCommaValues(propertyValue).stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .toList();
+    }
+
+    private static List<String> splitEscapedCommaValues(String propertyValue) {
+        List<String> values = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        for (int index = 0; index < propertyValue.length(); index++) {
+            char character = propertyValue.charAt(index);
+            if (character == '\\' && index + 1 < propertyValue.length() && propertyValue.charAt(index + 1) == ',') {
+                current.append(',');
+                index++;
+                continue;
+            }
+            if (character == ',') {
+                values.add(current.toString());
+                current.setLength(0);
+                continue;
+            }
+            current.append(character);
+        }
+        values.add(current.toString());
+        return values;
+    }
+
+    private static List<String> configuredListValues(List<String> values) {
+        if (values == null) {
+            return List.of();
+        }
+        return values.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .toList();
     }
 
     private Path junitReportPath(Path executionRoot) {

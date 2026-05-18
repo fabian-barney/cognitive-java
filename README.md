@@ -40,6 +40,13 @@ java -jar cognitive-java-cli-<version>.jar src/main/java/demo/Sample.java
 java -jar cognitive-java-cli-<version>.jar module-a module-b
 ```
 
+CLI exclusion controls:
+
+- `--exclude <glob>` repeatable
+- `--exclude-class <regex>` repeatable
+- `--exclude-annotation <name>` repeatable
+- `--use-default-exclusions[=true|false]`
+
 ## Gradle Plugin
 
 Published plugin:
@@ -62,6 +69,13 @@ Run:
 ```bash
 ./gradlew cognitive-java-check
 ```
+
+Gradle configuration also supports:
+
+- `excludes`
+- `excludeClasses`
+- `excludeAnnotations`
+- `useDefaultExclusions`
 
 If you want Gradle to check Maven Central before the Gradle Plugin Portal, add both repositories to `pluginManagement.repositories` in `settings.gradle(.kts)`:
 
@@ -111,10 +125,28 @@ Run:
 mvn verify
 ```
 
+Maven configuration also supports:
+
+- `cognitiveJava.excludes` or `<excludes><exclude>...</exclude></excludes>`
+- `cognitiveJava.excludeClasses` or `<excludeClasses><excludeClass>...</excludeClass></excludeClasses>`
+- `cognitiveJava.excludeAnnotations` or `<excludeAnnotations><excludeAnnotation>...</excludeAnnotation></excludeAnnotations>`
+- `cognitiveJava.useDefaultExclusions`
+
+## Source Exclusions
+
+Generated or external sources can be excluded after file discovery and before method analysis. Built-in defaults stay conservative and generated-code-focused:
+
+- any source below a directory whose path segment contains `generated`
+- any source below `**/src/main/java-gen/**`
+- classes under generated-focused FQCN patterns such as `generated`, `gen`, `*MapperImpl`, `Dagger*`, `Hilt_*`, and `AutoValue_*`
+- classes annotated with any annotation whose simple name is `Generated`
+
+Full JSON, text, and JUnit outputs include exclusion audit counts. Compact primary reports in agent mode stay focused on actionable failures, while the JUnit sidecar retains the full exclusion audit.
+
 ## Exit Codes
 
 - `0` success, threshold respected
-- `1` invalid CLI usage
+- `1` parse or configuration error
 - `2` Cognitive Complexity threshold exceeded (`> 15`)
 
 ## Contributing

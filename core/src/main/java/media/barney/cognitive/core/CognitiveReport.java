@@ -6,23 +6,32 @@ record CognitiveReport(
         String status,
         int threshold,
         List<MethodReport> methods,
+        SourceExclusionAudit exclusions,
         double elapsedSeconds
 ) {
     CognitiveReport(String status, int threshold, List<MethodReport> methods) {
-        this(status, threshold, methods, 0.0);
+        this(status, threshold, methods, SourceExclusionAudit.empty(), 0.0);
+    }
+
+    CognitiveReport(String status, int threshold, List<MethodReport> methods, SourceExclusionAudit exclusions) {
+        this(status, threshold, methods, exclusions, 0.0);
     }
 
     static CognitiveReport from(List<MethodMetrics> metrics, int threshold) {
+        return from(metrics, threshold, SourceExclusionAudit.empty());
+    }
+
+    static CognitiveReport from(List<MethodMetrics> metrics, int threshold, SourceExclusionAudit exclusions) {
         int validatedThreshold = Thresholds.validate(threshold);
         List<MethodReport> methods = metrics.stream()
                 .map(metric -> MethodReport.from(metric, validatedThreshold))
                 .toList();
-        return new CognitiveReport(status(methods), validatedThreshold, methods);
+        return new CognitiveReport(status(methods), validatedThreshold, methods, exclusions);
     }
 
     CognitiveReport withElapsedNanos(long elapsedNanos) {
         double seconds = Math.max(0.0, elapsedNanos / 1_000_000_000.0);
-        return new CognitiveReport(status, threshold, methods, seconds);
+        return new CognitiveReport(status, threshold, methods, exclusions, seconds);
     }
 
     private static String status(List<MethodReport> methods) {

@@ -16,6 +16,10 @@ class CliArgumentsParserTest {
         assertEquals(ReportFormat.TOON, args.reportFormat());
         assertEquals(15, args.threshold());
         assertEquals(List.of(), args.fileArgs());
+        assertEquals(List.of(), args.exclusionOptions().excludes());
+        assertEquals(List.of(), args.exclusionOptions().excludeClasses());
+        assertEquals(List.of(), args.exclusionOptions().excludeAnnotations());
+        assertEquals(true, args.exclusionOptions().useDefaultExclusions());
     }
 
     @Test
@@ -146,5 +150,34 @@ class CliArgumentsParserTest {
                 () -> CliArgumentsParser.parse(new String[]{"--output", "--format", "json"}));
 
         assertEquals("--output requires a path", error.getMessage());
+    }
+
+    @Test
+    void parsesSourceExclusionOptions() {
+        CliArguments args = CliArgumentsParser.parse(new String[]{
+                "--exclude=module-a/**",
+                "--exclude", "**/generated/**",
+                "--exclude-class", ".*MapperImpl$",
+                "--exclude-annotation=Generated",
+                "--use-default-exclusions=false",
+                "--changed"
+        });
+
+        assertEquals(List.of("module-a/**", "**/generated/**"), args.exclusionOptions().excludes());
+        assertEquals(List.of(".*MapperImpl$"), args.exclusionOptions().excludeClasses());
+        assertEquals(List.of("Generated"), args.exclusionOptions().excludeAnnotations());
+        assertEquals(false, args.exclusionOptions().useDefaultExclusions());
+    }
+
+    @Test
+    void exclusionOptionsRequireValues() {
+        assertEquals("--exclude requires a glob", assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"--exclude"})).getMessage());
+        assertEquals("--exclude-class requires a regex", assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"--exclude-class"})).getMessage());
+        assertEquals("--exclude-annotation requires an annotation name", assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"--exclude-annotation"})).getMessage());
+        assertEquals("--use-default-exclusions requires true or false when assigned", assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"--use-default-exclusions=maybe"})).getMessage());
     }
 }

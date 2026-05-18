@@ -40,27 +40,55 @@ final class ReportFormatter {
                          ReportFormat format,
                          boolean failuresOnly,
                          boolean omitRedundancy) {
+        return format(report, format, failuresOnly, omitRedundancy, true);
+    }
+
+    static String format(CognitiveReport report,
+                         ReportFormat format,
+                         boolean failuresOnly,
+                         boolean omitRedundancy,
+                         boolean includeExclusionAudit) {
         if (format == ReportFormat.NONE) {
             return "";
         }
         CognitiveReport selected = failuresOnly ? failuresOnly(report) : report;
         return switch (format) {
-            case TOON -> JToon.encodeJson(formatJson(selected, omitRedundancy));
-            case JSON -> formatJson(selected, omitRedundancy);
-            case TEXT -> formatText(selected, omitRedundancy);
-            case JUNIT -> formatJunit(selected, omitRedundancy);
+            case TOON -> JToon.encodeJson(formatJson(selected, omitRedundancy, includeExclusionAudit));
+            case JSON -> formatJson(selected, omitRedundancy, includeExclusionAudit);
+            case TEXT -> formatText(selected, omitRedundancy, includeExclusionAudit);
+            case JUNIT -> formatJunit(selected, omitRedundancy, includeExclusionAudit);
             case NONE -> "";
         };
     }
 
-    private static String formatText(CognitiveReport report, boolean omitRedundancy) {
+    private static String formatText(CognitiveReport report,
+                                     boolean omitRedundancy,
+                                     boolean includeExclusionAudit) {
         StringBuilder builder = new StringBuilder();
         builder.append("Cognitive Complexity Report\n");
         builder.append("===========================\n");
         builder.append("Status: ").append(report.status()).append('\n');
         builder.append("Threshold: ").append(report.threshold()).append('\n');
+        if (includeExclusionAudit && hasExclusionAudit(report.exclusions())) {
+            appendExclusionAudit(builder, report.exclusions());
+        }
         appendMethodTable(builder, omitRedundancy ? methodTextColumns() : fullTextColumns(), report.methods());
         return builder.toString();
+    }
+
+    private static void appendExclusionAudit(StringBuilder builder, SourceExclusionAudit audit) {
+        builder.append("Exclusions:\n");
+        builder.append("  Discovered files: ").append(audit.discoveredFiles()).append('\n');
+        builder.append("  Analyzed files: ").append(audit.analyzedFiles()).append('\n');
+        builder.append("  Analyzed methods: ").append(audit.analyzedMethods()).append('\n');
+        builder.append("  Excluded files: ").append(audit.excludedFileCount()).append('\n');
+        for (SourceExclusionAudit.ExclusionCount count : audit.excludedFiles()) {
+            builder.append("    ").append(count.reason()).append(": ").append(count.count()).append('\n');
+        }
+        builder.append("  Excluded classes: ").append(audit.excludedClassCount()).append('\n');
+        for (SourceExclusionAudit.ExclusionCount count : audit.excludedClasses()) {
+            builder.append("    ").append(count.reason()).append(": ").append(count.count()).append('\n');
+        }
     }
 
     private static List<TableColumn> fullTextColumns() {
@@ -141,21 +169,40 @@ final class ReportFormatter {
         builder.append('\n');
     }
 
-    private static String formatJson(CognitiveReport report, boolean omitRedundancy) {
-        return writeJson(jsonReport(report, omitRedundancy));
+    private static String formatJson(CognitiveReport report,
+                                     boolean omitRedundancy,
+                                     boolean includeExclusionAudit) {
+        return writeJson(jsonReport(report, omitRedundancy, includeExclusionAudit));
     }
 
-    private static String formatJunit(CognitiveReport report, boolean omitRedundancy) {
-        return writeXml(junitTestSuites(report, omitRedundancy));
+    private static String formatJunit(CognitiveReport report,
+                                      boolean omitRedundancy,
+                                      boolean includeExclusionAudit) {
+        return writeXml(junitTestSuites(report, omitRedundancy, includeExclusionAudit));
     }
 
-    private static JsonReport jsonReport(CognitiveReport report, boolean omitRedundancy) {
+    private static JsonReport jsonReport(CognitiveReport report,
+                                         boolean omitRedundancy,
+                                         boolean includeExclusionAudit) {
         return new JsonReport(
                 report.status(),
                 report.threshold(),
+                includeExclusionAudit && hasExclusionAudit(report.exclusions()) ? jsonExclusions(report.exclusions()) : null,
                 report.methods().stream()
                         .map(method -> jsonMethod(method, omitRedundancy))
                         .toList()
+        );
+    }
+
+    private static JsonExclusions jsonExclusions(SourceExclusionAudit audit) {
+        return new JsonExclusions(
+                audit.discoveredFiles(),
+                audit.analyzedFiles(),
+                audit.analyzedMethods(),
+                audit.excludedFileCount(),
+                audit.excludedClassCount(),
+                audit.excludedFiles(),
+                audit.excludedClasses()
         );
     }
 
@@ -178,7 +225,9 @@ final class ReportFormatter {
         }
     }
 
-    private static JunitTestSuites junitTestSuites(CognitiveReport report, boolean omitRedundancy) {
+    private static JunitTestSuites junitTestSuites(CognitiveReport report,
+                                                   boolean omitRedundancy,
+                                                   boolean includeExclusionAudit) {
         List<CognitiveReport.MethodReport> methods = report.methods();
         int failed = countFailed(methods);
         String suiteTime = formatTime(report.elapsedSeconds());
@@ -190,15 +239,37 @@ final class ReportFormatter {
                 0,
                 0,
                 suiteTime,
-                new JunitProperties(List.of(
-                        new JunitProperty("status", report.status()),
-                        new JunitProperty("threshold", Integer.toString(report.threshold()))
-                )),
+                new JunitProperties(junitSuiteProperties(report, includeExclusionAudit)),
                 methods.stream()
                         .map(method -> junitTestCase(method, report.threshold(), omitRedundancy, testCaseTime))
                         .toList()
         );
         return new JunitTestSuites(methods.size(), failed, 0, 0, suiteTime, List.of(testSuite));
+    }
+
+    private static List<JunitProperty> junitSuiteProperties(CognitiveReport report, boolean includeExclusionAudit) {
+        List<JunitProperty> properties = new ArrayList<>();
+        properties.add(new JunitProperty("status", report.status()));
+        properties.add(new JunitProperty("threshold", Integer.toString(report.threshold())));
+        if (includeExclusionAudit && hasExclusionAudit(report.exclusions())) {
+            SourceExclusionAudit audit = report.exclusions();
+            properties.add(new JunitProperty("exclusion.discoveredFiles", Integer.toString(audit.discoveredFiles())));
+            properties.add(new JunitProperty("exclusion.analyzedFiles", Integer.toString(audit.analyzedFiles())));
+            properties.add(new JunitProperty("exclusion.analyzedMethods", Integer.toString(audit.analyzedMethods())));
+            properties.add(new JunitProperty("exclusion.excludedFiles", Integer.toString(audit.excludedFileCount())));
+            properties.add(new JunitProperty("exclusion.excludedClasses", Integer.toString(audit.excludedClassCount())));
+            addCountProperties(properties, "exclusion.file", audit.excludedFiles());
+            addCountProperties(properties, "exclusion.class", audit.excludedClasses());
+        }
+        return properties;
+    }
+
+    private static void addCountProperties(List<JunitProperty> properties,
+                                           String prefix,
+                                           List<SourceExclusionAudit.ExclusionCount> counts) {
+        for (SourceExclusionAudit.ExclusionCount count : counts) {
+            properties.add(new JunitProperty(prefix + "." + count.reason(), Integer.toString(count.count())));
+        }
     }
 
     private static int countFailed(List<CognitiveReport.MethodReport> methods) {
@@ -288,8 +359,17 @@ final class ReportFormatter {
                 report.status(),
                 report.threshold(),
                 failedMethods,
+                report.exclusions(),
                 report.elapsedSeconds()
         );
+    }
+
+    private static boolean hasExclusionAudit(SourceExclusionAudit audit) {
+        return audit.discoveredFiles() != 0
+                || audit.analyzedFiles() != 0
+                || audit.analyzedMethods() != 0
+                || audit.excludedFileCount() != 0
+                || audit.excludedClassCount() != 0;
     }
 
     private static String formatTime(double elapsedSeconds) {
@@ -299,7 +379,20 @@ final class ReportFormatter {
     private record JsonReport(
             String status,
             int threshold,
+            @JsonInclude(JsonInclude.Include.NON_NULL)
+            @Nullable JsonExclusions exclusions,
             List<JsonMethod> methods
+    ) {
+    }
+
+    private record JsonExclusions(
+            int discoveredFiles,
+            int analyzedFiles,
+            int analyzedMethods,
+            int excludedFiles,
+            int excludedClasses,
+            List<SourceExclusionAudit.ExclusionCount> excludedFileReasons,
+            List<SourceExclusionAudit.ExclusionCount> excludedClassReasons
     ) {
     }
 

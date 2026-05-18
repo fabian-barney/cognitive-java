@@ -35,6 +35,10 @@ public final class Main {
                   --agent
                   --failures-only[=true|false]
                   --omit-redundancy[=true|false]
+                  --exclude <glob>
+                  --exclude-class <regex>
+                  --exclude-annotation <name>
+                  --use-default-exclusions[=true|false]
                   --output <path>
                   --junit-report <path>
                   --threshold <integer>

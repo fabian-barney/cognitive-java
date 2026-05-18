@@ -14,7 +14,7 @@ final class ReportPublisher {
     static void publish(CognitiveReport report, ReportOptions options, PrintStream out) throws IOException {
         publishPrimary(report, options, out);
         if (options.junitReportPath() != null) {
-            write(options.junitReportPath(), ReportFormatter.format(report, ReportFormat.JUNIT));
+            write(options.junitReportPath(), ReportFormatter.format(report, ReportFormat.JUNIT, false, false, true));
         }
     }
 
@@ -24,7 +24,8 @@ final class ReportPublisher {
                 report,
                 options.format(),
                 options.failuresOnly(),
-                options.omitRedundancy()
+                options.omitRedundancy(),
+                options.includePrimaryExclusionAudit()
         );
         if (options.outputPath() == null) {
             out.print(content);

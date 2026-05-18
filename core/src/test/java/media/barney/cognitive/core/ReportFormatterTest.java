@@ -70,6 +70,33 @@ class ReportFormatterTest {
         assertEquals("", ReportFormatter.format(report(), ReportFormat.NONE));
     }
 
+    @Test
+    void fullReportsIncludeExclusionAuditWhileCompactPrimaryCanOmitIt() {
+        CognitiveReport report = CognitiveReport.from(
+                List.of(metric("high", "demo.High", "src/main/java/demo/High.java", 4, 8, 16)),
+                15,
+                new SourceExclusionAudit(
+                        3,
+                        1,
+                        1,
+                        List.of(new SourceExclusionAudit.ExclusionCount("default:path:generated-directory", 1)),
+                        List.of(new SourceExclusionAudit.ExclusionCount("default:annotation:Generated", 1))
+                )).withElapsedNanos(250_000_000);
+
+        String text = ReportFormatter.format(report, ReportFormat.TEXT, false, false, true);
+        String json = ReportFormatter.format(report, ReportFormat.JSON, false, false, true);
+        String junit = ReportFormatter.format(report, ReportFormat.JUNIT, false, false, true);
+        String compact = ReportFormatter.format(report, ReportFormat.JSON, false, false, false);
+
+        assertTrue(text.contains("Exclusions:"));
+        assertTrue(text.contains("Discovered files: 3"));
+        assertTrue(json.contains("\"excludedFiles\": 1"));
+        assertTrue(json.contains("\"analyzedMethods\": 1"));
+        assertTrue(junit.contains("exclusion.excludedFiles"));
+        assertTrue(junit.contains("exclusion.excludedClasses"));
+        assertFalse(compact.contains("\"exclusions\""));
+    }
+
     private static CognitiveReport report() {
         return CognitiveReport.from(List.of(
                 metric("high", "demo.High", "src/main/java/demo/High.java", 4, 8, 16),

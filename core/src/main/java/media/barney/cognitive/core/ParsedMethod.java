@@ -10,10 +10,12 @@ record ParsedMethod(
         int arity,
         int startLine,
         int endLine,
+        List<String> classAnnotations,
         int baseCognitiveComplexity,
         List<MethodCall> calls
 ) {
     ParsedMethod {
+        classAnnotations = List.copyOf(classAnnotations);
         calls = List.copyOf(calls);
     }
 

@@ -56,6 +56,10 @@ class CognitiveJavaGradlePluginTest {
         assertTrue(extension.getJunitReport().get().getAsFile().toPath().normalize().toString()
                 .replace('\\', '/')
                 .endsWith("build/reports/cognitive-java/TEST-cognitive-java.xml"));
+        assertEquals(List.of(), extension.getExcludes().get());
+        assertEquals(List.of(), extension.getExcludeClasses().get());
+        assertEquals(List.of(), extension.getExcludeAnnotations().get());
+        assertTrue(extension.getUseDefaultExclusions().get());
         assertEquals(15, checkTask.getThreshold().get());
         assertFalse(checkTask.getAgent().get());
         assertEquals("none", checkTask.getFormat().get());
@@ -67,6 +71,10 @@ class CognitiveJavaGradlePluginTest {
                 .replace('\\', '/')
                 .endsWith("build/reports/cognitive-java/TEST-cognitive-java.xml"));
         assertTrue(checkTask.getJunitReportOutput().isPresent());
+        assertEquals(List.of(), checkTask.getExcludes().get());
+        assertEquals(List.of(), checkTask.getExcludeClasses().get());
+        assertEquals(List.of(), checkTask.getExcludeAnnotations().get());
+        assertTrue(checkTask.getUseDefaultExclusions().get());
         assertTrue(checkTask.getAnalysisSources().getFiles().contains(source.toFile()));
         Set<String> dependencyNames = checkTask.getTaskDependencies().getDependencies(checkTask).stream()
                 .map(Task::getName)
@@ -91,6 +99,10 @@ class CognitiveJavaGradlePluginTest {
         extension.getOutput().fileValue(output.toFile());
         extension.getJunit().set(false);
         extension.getJunitReport().fileValue(junitReport.toFile());
+        extension.getExcludes().set(List.of("module-a/**"));
+        extension.getExcludeClasses().set(List.of(".*MapperImpl$"));
+        extension.getExcludeAnnotations().set(List.of("Generated"));
+        extension.getUseDefaultExclusions().set(false);
 
         CognitiveJavaCheckTask checkTask =
                 (CognitiveJavaCheckTask) project.getTasks().getByName("cognitive-java-check");
@@ -103,6 +115,10 @@ class CognitiveJavaGradlePluginTest {
         assertEquals(output.normalize(), checkTask.getOutput().get().getAsFile().toPath().normalize());
         assertFalse(checkTask.getJunit().get());
         assertEquals(junitReport.normalize(), checkTask.getJunitReport().get().getAsFile().toPath().normalize());
+        assertEquals(List.of("module-a/**"), checkTask.getExcludes().get());
+        assertEquals(List.of(".*MapperImpl$"), checkTask.getExcludeClasses().get());
+        assertEquals(List.of("Generated"), checkTask.getExcludeAnnotations().get());
+        assertFalse(checkTask.getUseDefaultExclusions().get());
         assertFalse(checkTask.getJunitReportOutput().isPresent());
     }
 
@@ -124,6 +140,10 @@ class CognitiveJavaGradlePluginTest {
                 .replace('\\', '/')
                 .endsWith("build/reports/cognitive-java/custom-cognitive-java-check/TEST-cognitive-java.xml"));
         assertTrue(checkTask.getJunitReportOutput().isPresent());
+        assertEquals(List.of(), checkTask.getExcludes().get());
+        assertEquals(List.of(), checkTask.getExcludeClasses().get());
+        assertEquals(List.of(), checkTask.getExcludeAnnotations().get());
+        assertTrue(checkTask.getUseDefaultExclusions().get());
     }
 
     @Test
@@ -214,6 +234,10 @@ class CognitiveJavaGradlePluginTest {
         checkTask.getOutput().fileValue(output.toFile());
         checkTask.getJunit().set(false);
         checkTask.getJunitReport().fileValue(junitReport.toFile());
+        checkTask.getExcludes().set(List.of("task/**"));
+        checkTask.getExcludeClasses().set(List.of("demo.Generated"));
+        checkTask.getExcludeAnnotations().set(List.of("Generated"));
+        checkTask.getUseDefaultExclusions().set(false);
 
         assertEquals(8, checkTask.getThreshold().get());
         assertEquals("json", checkTask.getFormat().get());
@@ -223,6 +247,10 @@ class CognitiveJavaGradlePluginTest {
         assertEquals(output.normalize(), checkTask.getOutput().get().getAsFile().toPath().normalize());
         assertFalse(checkTask.getJunit().get());
         assertEquals(junitReport.normalize(), checkTask.getJunitReport().get().getAsFile().toPath().normalize());
+        assertEquals(List.of("task/**"), checkTask.getExcludes().get());
+        assertEquals(List.of("demo.Generated"), checkTask.getExcludeClasses().get());
+        assertEquals(List.of("Generated"), checkTask.getExcludeAnnotations().get());
+        assertFalse(checkTask.getUseDefaultExclusions().get());
     }
 
     @Test
@@ -241,6 +269,46 @@ class CognitiveJavaGradlePluginTest {
         assertTrue(Files.exists(junitReport));
         assertTrue(Files.readString(junitReport).contains("<testsuites tests=\"1\" failures=\"0\" errors=\"0\" skipped=\"0\""));
         assertTrue(Files.exists(executionMarkerPath(task)));
+    }
+
+    @Test
+    void runCheckAppliesConfiguredSourceExclusions() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        Project project = ProjectBuilder.builder().withProjectDir(projectRoot.toFile()).build();
+        Path source = projectRoot.resolve("src/main/java/demo/Sample.java");
+        Files.createDirectories(source.getParent());
+        Files.writeString(source, """
+                package demo;
+
+                class Sample {
+                    int alpha(boolean a, boolean b) {
+                        if (a) {
+                            if (b) {
+                                return 2;
+                            }
+                            return 1;
+                        }
+                        return 0;
+                    }
+                }
+                """);
+
+        CognitiveJavaCheckTask task = project.getTasks().register("cognitive-java-check", CognitiveJavaCheckTask.class).get();
+        task.getAnalysisRoot().fileValue(projectRoot.toFile());
+        task.getAnalysisSources().from(source);
+        task.getThreshold().set(1);
+        task.getFormat().set("none");
+        task.getAgent().set(false);
+        task.getFailuresOnly().set(false);
+        task.getOmitRedundancy().set(false);
+        task.getUseDefaultExclusions().set(false);
+        task.getExcludes().set(List.of("src/main/java/demo/**"));
+
+        task.runCheck();
+
+        Path junitReport = projectRoot.resolve("build/reports/cognitive-java/TEST-cognitive-java.xml");
+        assertTrue(Files.readString(junitReport)
+                .contains("<testsuites tests=\"0\" failures=\"0\" errors=\"0\" skipped=\"0\""));
     }
 
     @Test
