@@ -34,7 +34,8 @@ final class CliArgumentsParser {
                 state.omitRedundancy,
                 state.outputPath,
                 state.junitReportPath,
-                fileArgs
+                fileArgs,
+                state.exclusionOptions
         );
     }
 
@@ -67,6 +68,14 @@ final class CliArgumentsParser {
         if (isBooleanOption(arg, "--omit-redundancy")) {
             state.omitRedundancy = parseBooleanOption(arg, "--omit-redundancy", state.omitRedundancySeen);
             state.omitRedundancySeen = true;
+            return index;
+        }
+        if (isBooleanOption(arg, "--use-default-exclusions")) {
+            state.useDefaultExclusions = parseBooleanOption(
+                    arg,
+                    "--use-default-exclusions",
+                    state.useDefaultExclusionsSeen);
+            state.useDefaultExclusionsSeen = true;
             return index;
         }
         return parseValuedOption(args, index, state, arg);
@@ -103,7 +112,8 @@ final class CliArgumentsParser {
         if (parseReportFormatOption(args, index, state, option)
                 || parseOutputOption(args, index, state, option)
                 || parseJunitReportOption(args, index, state, option)
-                || parseThresholdOption(args, index, state, option)) {
+                || parseThresholdOption(args, index, state, option)
+                || parseExclusionOption(args, index, state, option)) {
             return option.hasInlineValue() ? index : index + 1;
         }
         throw new IllegalArgumentException("Unknown option: " + arg);
@@ -119,6 +129,25 @@ final class CliArgumentsParser {
             }
             state.reportFormat = ReportFormat.parse(optionValue(args, index, option, "one of: toon, json, text, junit, none"));
             state.reportFormatSeen = true;
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean parseExclusionOption(String[] args,
+                                                int index,
+                                                ParseStateBuilder state,
+                                                AssignedOption option) {
+        if ("--exclude".equals(option.name())) {
+            state.excludes.add(parseListOption(args, index, option, "a glob"));
+            return true;
+        }
+        if ("--exclude-class".equals(option.name())) {
+            state.excludeClasses.add(parseListOption(args, index, option, "a regex"));
+            return true;
+        }
+        if ("--exclude-annotation".equals(option.name())) {
+            state.excludeAnnotations.add(parseListOption(args, index, option, "an annotation name"));
             return true;
         }
         return false;
@@ -175,6 +204,13 @@ final class CliArgumentsParser {
             throw new IllegalArgumentException(assignedOption.name() + " can only be provided once");
         }
         return optionValue(args, index, assignedOption, "a path");
+    }
+
+    private static String parseListOption(String[] args,
+                                          int index,
+                                          AssignedOption option,
+                                          String valueDescription) {
+        return optionValue(args, index, option, valueDescription).trim();
     }
 
     private static boolean isBooleanOption(String arg, String option) {
@@ -234,6 +270,7 @@ final class CliArgumentsParser {
                               boolean omitRedundancy,
                               @Nullable String outputPath,
                               @Nullable String junitReportPath,
+                              SourceExclusionOptions exclusionOptions,
                               List<String> fileArgs) {
     }
 
@@ -252,6 +289,11 @@ final class CliArgumentsParser {
         private boolean failuresOnlySeen;
         private boolean omitRedundancy;
         private boolean omitRedundancySeen;
+        private boolean useDefaultExclusions = true;
+        private boolean useDefaultExclusionsSeen;
+        private final List<String> excludes = new ArrayList<>();
+        private final List<String> excludeClasses = new ArrayList<>();
+        private final List<String> excludeAnnotations = new ArrayList<>();
         private @Nullable String outputPath;
         private boolean outputPathSeen;
         private @Nullable String junitReportPath;
@@ -271,6 +313,7 @@ final class CliArgumentsParser {
                     effectiveOmitRedundancy,
                     outputPath,
                     junitReportPath,
+                    new SourceExclusionOptions(excludes, excludeClasses, excludeAnnotations, useDefaultExclusions),
                     List.copyOf(values)
             );
         }

@@ -39,12 +39,18 @@ final class CliApplication {
         long startedAt = nanoTime.getAsLong();
         CliArguments parsed = parse.arguments();
         try {
+            SourceExclusionAudit.Builder audit = SourceExclusionAudit.builder();
+            SourceExclusionMatcher exclusions = SourceExclusionMatcher.create(projectRoot, parsed.exclusionOptions());
             ReportOptions options = reportOptions(parsed);
-            List<Path> filesToAnalyze = filesForMode(parsed);
+            List<Path> filesToAnalyze = SourceExclusionMatcher.filterFiles(
+                    filesForMode(parsed),
+                    exclusions,
+                    audit
+            );
             List<MethodMetrics> metrics = filesToAnalyze.isEmpty()
                     ? List.of()
-                    : CognitiveComplexityAnalyzer.analyze(projectRoot, filesToAnalyze);
-            CognitiveReport report = CognitiveReport.from(metrics, parsed.threshold())
+                    : CognitiveComplexityAnalyzer.analyze(projectRoot, filesToAnalyze, exclusions, audit);
+            CognitiveReport report = CognitiveReport.from(metrics, parsed.threshold(), audit.build())
                     .withElapsedNanos(nanoTime.getAsLong() - startedAt);
             ReportPublisher.publish(report, options, out);
 
@@ -93,7 +99,8 @@ final class CliApplication {
                 parsed.failuresOnly(),
                 parsed.omitRedundancy(),
                 parsed.outputPath(),
-                parsed.junitReportPath()
+                parsed.junitReportPath(),
+                !parsed.agent()
         );
     }
 

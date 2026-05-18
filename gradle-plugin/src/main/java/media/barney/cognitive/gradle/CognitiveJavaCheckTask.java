@@ -9,6 +9,7 @@ import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
@@ -102,6 +103,10 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         getOmitRedundancy().convention(getAgent());
         getJunit().convention(true);
         getJunitReport().convention(defaultJunitReport);
+        getExcludes().convention(List.of());
+        getExcludeClasses().convention(List.of());
+        getExcludeAnnotations().convention(List.of());
+        getUseDefaultExclusions().convention(true);
     }
 
     @Internal
@@ -146,6 +151,18 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
 
     @Internal
     public abstract RegularFileProperty getJunitReport();
+
+    @Input
+    public abstract ListProperty<String> getExcludes();
+
+    @Input
+    public abstract ListProperty<String> getExcludeClasses();
+
+    @Input
+    public abstract ListProperty<String> getExcludeAnnotations();
+
+    @Input
+    public abstract Property<Boolean> getUseDefaultExclusions();
 
     @Input
     @Optional
@@ -268,6 +285,12 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         }
         arguments.add("--failures-only=" + getFailuresOnly().get());
         arguments.add("--omit-redundancy=" + getOmitRedundancy().get());
+        addRepeated(arguments, "--exclude", getExcludes().get());
+        addRepeated(arguments, "--exclude-class", getExcludeClasses().get());
+        addRepeated(arguments, "--exclude-annotation", getExcludeAnnotations().get());
+        if (!getUseDefaultExclusions().get()) {
+            arguments.add("--use-default-exclusions=false");
+        }
         if (configuredOutputPath != null) {
             arguments.add("--output");
             arguments.add(configuredOutputPath.toString());
@@ -278,6 +301,13 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         }
         arguments.addAll(sourceArguments);
         return arguments.toArray(String[]::new);
+    }
+
+    private static void addRepeated(List<String> arguments, String option, List<String> values) {
+        for (String value : values) {
+            arguments.add(option);
+            arguments.add(value);
+        }
     }
 
     private void validateReportOptions(Path outputPath, Path junitReportPath) throws IOException {

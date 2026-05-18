@@ -12,6 +12,7 @@ record CliArguments(
         boolean omitRedundancy,
         @Nullable String outputPath,
         @Nullable String junitReportPath,
-        List<String> fileArgs
+        List<String> fileArgs,
+        SourceExclusionOptions exclusionOptions
 ) {
 }

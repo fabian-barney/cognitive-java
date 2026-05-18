@@ -106,6 +106,54 @@ class CognitiveJavaCheckMojoTest {
     }
 
     @Test
+    void usesConfiguredExclusionControls() throws Exception {
+        Path root = tempDir.resolve("root");
+        Files.createDirectories(root);
+
+        RecordingRunner runner = new RecordingRunner();
+        CognitiveJavaCheckMojo mojo = mojo(runner);
+        setField(mojo, "session", session(List.of(project(root, "root")), root));
+        setField(mojo, "project", project(root, "root"));
+        setField(mojo, "excludesProperty", "module-a/**, module-b/**");
+        setField(mojo, "excludes", List.of("**/custom/**"));
+        setField(mojo, "excludeClassesProperty", ".*MapperImpl$, demo.Name{1\\,3}$, demo.\\d+$");
+        setField(mojo, "excludeClasses", List.of("demo.Other{1,3}$"));
+        setField(mojo, "excludeAnnotationsProperty", "Generated");
+        setField(mojo, "excludeAnnotations", List.of("com.acme.Generated"));
+        setField(mojo, "useDefaultExclusions", false);
+
+        mojo.execute();
+
+        assertEquals(List.of(
+                "--format",
+                "none",
+                "--exclude",
+                "module-a/**",
+                "--exclude",
+                "module-b/**",
+                "--exclude",
+                "**/custom/**",
+                "--exclude-class",
+                ".*MapperImpl$",
+                "--exclude-class",
+                "demo.Name{1,3}$",
+                "--exclude-class",
+                "demo.\\d+$",
+                "--exclude-class",
+                "demo.Other{1,3}$",
+                "--exclude-annotation",
+                "Generated",
+                "--exclude-annotation",
+                "com.acme.Generated",
+                "--use-default-exclusions=false",
+                "--threshold",
+                "15",
+                "--junit-report",
+                root.resolve("target/cognitive-java/TEST-cognitive-java.xml").toString()
+        ), List.of(runner.args));
+    }
+
+    @Test
     void disablesJunitReport() throws Exception {
         Path root = tempDir.resolve("root");
         Files.createDirectories(root);

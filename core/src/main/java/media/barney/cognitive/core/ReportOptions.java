@@ -13,21 +13,31 @@ record ReportOptions(
         boolean failuresOnly,
         boolean omitRedundancy,
         @Nullable Path outputPath,
-        @Nullable Path junitReportPath
+        @Nullable Path junitReportPath,
+        boolean includePrimaryExclusionAudit
 ) {
+    ReportOptions(ReportFormat format,
+                  boolean failuresOnly,
+                  boolean omitRedundancy,
+                  @Nullable Path outputPath,
+                  @Nullable Path junitReportPath) {
+        this(format, failuresOnly, omitRedundancy, outputPath, junitReportPath, true);
+    }
+
     static ReportOptions create(Path analysisRoot,
                                 ReportFormat format,
                                 boolean failuresOnly,
                                 boolean omitRedundancy,
                                 @Nullable String outputPath,
-                                @Nullable String junitReportPath) {
+                                @Nullable String junitReportPath,
+                                boolean includePrimaryExclusionAudit) {
         Path root = analysisRoot.toAbsolutePath().normalize();
         Path output = resolveReportPath(root, "--output", outputPath);
         Path junit = resolveReportPath(root, "--junit-report", junitReportPath);
         if (output != null && junit != null && sameReportTarget(output, junit)) {
             throw new IllegalArgumentException("--output and --junit-report must not point to the same file");
         }
-        return new ReportOptions(format, failuresOnly, omitRedundancy, output, junit);
+        return new ReportOptions(format, failuresOnly, omitRedundancy, output, junit, includePrimaryExclusionAudit);
     }
 
     private static @Nullable Path resolveReportPath(Path root, String name, @Nullable String configuredPath) {
