@@ -12,10 +12,12 @@ jobs:
   publish:
     name: Publish Release
     runs-on: ubuntu-latest
+    env:
+      CRAP_JAVA_VERSION: 0.5.0
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
           fetch-depth: 0
 
@@ -41,6 +43,68 @@ jobs:
           gradle_version="$(cd gradle-plugin && ./gradlew -q properties | awk -F': ' '/^version:/ {print $2; exit}')"
           test "${pom_version}" = "${tag_version}"
           test "${gradle_version}" = "${tag_version}"
+
+      - name: Build cognitive-java CLI
+        run: mvn -B -pl cli -am package
+
+      - name: Resolve cognitive-java CLI jar path
+        shell: bash
+        run: |
+          shopt -s nullglob
+          jars=(cli/target/cognitive-java-cli-*.jar)
+          filtered=()
+          for jar in "${jars[@]}"; do
+            case "$jar" in
+              *-sources.jar|*-javadoc.jar|*-shaded.jar|*original*.jar) ;;
+              *) filtered+=("$jar") ;;
+            esac
+          done
+          if [ "${#filtered[@]}" -ne 1 ]; then
+            echo "Expected exactly one built CLI jar, found ${#filtered[@]}" >&2
+            printf 'Candidates:\n%s\n' "${filtered[@]}" >&2
+            exit 1
+          fi
+          echo "COGNITIVE_CLI_JAR=${filtered[0]}" >> "$GITHUB_ENV"
+
+      - name: Resolve crap-java CLI
+        run: >
+          mvn -B dependency:copy
+          -Dartifact="media.barney:crap-java-cli:${CRAP_JAVA_VERSION}:jar"
+          -DoutputDirectory=target/crap-java-gate
+
+      - name: Run Maven-source crap-java gate
+        run: |
+          mkdir -p target/crap-java
+          java -jar target/crap-java-gate/crap-java-cli-${CRAP_JAVA_VERSION}.jar \
+            --format text \
+            --junit-report target/crap-java/TEST-crap-java-maven-sources.xml \
+            --build-tool maven \
+            core/src/main/java cli/src/main/java maven-plugin/src/main/java
+
+      - name: Run Gradle-plugin crap-java gate
+        run: |
+          mkdir -p target/crap-java
+          java -jar target/crap-java-gate/crap-java-cli-${CRAP_JAVA_VERSION}.jar \
+            --format text \
+            --junit-report target/crap-java/TEST-crap-java-gradle-plugin.xml \
+            --build-tool gradle \
+            gradle-plugin/src/main/java
+
+      - name: Run Maven-source cognitive-java gate
+        run: |
+          mkdir -p target/cognitive-java
+          java -jar "$COGNITIVE_CLI_JAR" \
+            --format text \
+            --junit-report target/cognitive-java/TEST-cognitive-java-maven-sources.xml \
+            core/src/main/java cli/src/main/java maven-plugin/src/main/java
+
+      - name: Run Gradle-plugin cognitive-java gate
+        run: |
+          mkdir -p target/cognitive-java
+          java -jar "$COGNITIVE_CLI_JAR" \
+            --format text \
+            --junit-report target/cognitive-java/TEST-cognitive-java-gradle-plugin.xml \
+            gradle-plugin/src/main/java
 
       - name: Normalize and import GPG key
         env:

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Added
+
+- Added consumer-facing documentation for CLI report controls, threshold overrides, report outputs, source roots, and exclusion configuration across the CLI, Maven plugin, and Gradle plugin.
+- Added split self-hosted `cognitive-java Gate` JUnit sidecars for Maven-source and Gradle-plugin scans in CI.
+
+### Changed
+
+- Expanded repository CI validation to cover JDK `17`, `21`, and `25`, plus Windows path-sensitive verification.
+- Updated release automation to run the repository `crap-java` and `cognitive-java` gates before publication.
+
 ### Fixed
 
 - Release validation now fails on Maven Javadoc errors and runs a signed Maven publication preflight before release publication.

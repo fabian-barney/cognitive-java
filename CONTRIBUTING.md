@@ -5,45 +5,47 @@ All changes in this repository are expected to be issue-linked.
 ## Workflow
 
 1. Create or confirm the GitHub issue first.
-2. Create a descriptive branch that includes the issue number, for example `25-downstream-docs`.
+2. Create a descriptive branch that includes the issue number.
 3. Reference the issue number in every commit message.
-4. Open a PR that closes the issue.
+4. Open a PR that closes the issue and keeps the change scoped to that issue.
 5. After each push, review new PR feedback, fix valid findings in a follow-up push, reply when a finding is not applicable, and resolve threads only after the fix or explicit invalidation response.
-6. Merge only after the latest push has no valid findings left and all required checks are green.
+6. Merge only after the latest push has a newer clean review and all required checks are green.
 
 ## Repository Layout
 
-- `core`: Cognitive Complexity engine, source discovery, and report formatting
-- `cli`: runnable CLI entrypoint that shades `core`
+- `core`: Cognitive Complexity engine, source discovery, exclusions, and report formatting
+- `cli`: runnable shaded CLI entrypoint
 - `maven-plugin`: Maven plugin exposing the `check` goal
 - `gradle-plugin`: Gradle plugin build exposing `media.barney.cognitive-java`
 
 ## Local Validation
 
-Build the CLI and run the core tests:
+Run the repository-standard Maven verification:
 
 ```bash
-mvn -B -pl cli -am package
+mvn -B verify -Dcentral.skipPublishing=true
 ```
 
-Build the core jar before running the Gradle plugin tests:
-
-```bash
-mvn -B -pl core -am package
-cd gradle-plugin
-./gradlew test
-```
-
-Run the Maven plugin module, including its invoker integration fixtures:
+Run the Maven plugin module, including its integration fixtures:
 
 ```bash
 mvn -B -pl maven-plugin -am verify
 ```
 
-Run the Maven release preflight, including signed sources and Javadocs, without publishing to Central:
+Run the Gradle plugin validation workflow after packaging the core jar:
 
 ```bash
-mvn -B -Prelease -Dcentral.skipPublishing=true -pl .,cli,maven-plugin -am deploy
+mvn -B -pl core -am package
+cd gradle-plugin
+./gradlew test validatePlugins publishToMavenLocal
+```
+
+On Windows, use:
+
+```powershell
+mvn -B -pl core -am package
+Set-Location gradle-plugin
+.\gradlew.bat test validatePlugins publishToMavenLocal
 ```
 
 Consumer repositories should standardize normal validation on:
@@ -52,28 +54,25 @@ Consumer repositories should standardize normal validation on:
 mvn -B -ntp verify
 ```
 
-## Repository CI and Self-Hosting Notes
+## Repository CI And Self-Hosting Notes
 
-Repository CI also runs the shared `crap-java` gate. It resolves the published CLI from Maven Central:
-
-- `media.barney:crap-java-cli:0.5.0`
-
-The gate runs Maven-mode checks for `core`, `cli`, and `maven-plugin`, and a separate Gradle-mode check for `gradle-plugin/src/main/java`.
-
-Repository CI also runs the published `cognitive-java` Maven plugin as a separate `cognitive-java Gate` job:
-
-- `media.barney:cognitive-java-maven-plugin:0.4.0`
-
-Run the same gate locally from the repository root with:
-
-```bash
-mvn -B -N media.barney:cognitive-java-maven-plugin:0.4.0:check
-```
-
-This repository uses the published plugin in non-recursive mode because binding the plugin into the same Maven reactor would create a project cycle.
-
-Self-hosting exceptions keep metric ownership on the full repository scope, including `gradle-plugin/src/main/java`:
+The self-hosted gate jobs stay split by build tool so metric ownership still covers the full repository scope, including `gradle-plugin/src/main/java`.
 
 - `crap-java Gate` owns CRAP and coverage failures across `core`, `cli`, `maven-plugin`, and `gradle-plugin/src/main/java`
-- `cognitive-java Gate` owns Cognitive Complexity failures across `core`, `cli`, `maven-plugin`, and `gradle-plugin/src/main/java`
-- `Gradle Plugin` validates plugin build and test behavior only; it does not own metric failures
+- `cognitive-java Gate` owns Cognitive Complexity failures across the same source scope
+- `Gradle Plugin` validates plugin build and wrapper behavior only; it does not own metric failures
+
+The build workflow now validates:
+
+- Maven verification on JDK `17`, `21`, and `25`
+- Windows Maven verification for path-sensitive behavior
+- Gradle plugin validation on Linux and Windows
+- uploaded JUnit sidecars from both self-hosted `cognitive-java Gate` scans
+
+Run the self-hosted gates locally from the repository root with the built or published CLIs as needed:
+
+```bash
+mvn -B -pl cli -am package
+java -jar cli/target/cognitive-java-cli-<version>.jar --format text core/src/main/java cli/src/main/java maven-plugin/src/main/java
+java -jar cli/target/cognitive-java-cli-<version>.jar --format text gradle-plugin/src/main/java
+```

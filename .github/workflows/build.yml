@@ -9,84 +9,82 @@ permissions:
   contents: read
 
 jobs:
-  core-and-cli:
-    name: Core and CLI
-    runs-on: ubuntu-latest
+  maven-verify:
+    name: Verify (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: JDK 17 Ubuntu
+            os: ubuntu-latest
+            java: "17"
+          - name: JDK 21 Ubuntu
+            os: ubuntu-latest
+            java: "21"
+          - name: JDK 25 Ubuntu
+            os: ubuntu-latest
+            java: "25"
+          - name: JDK 17 Windows
+            os: windows-latest
+            java: "17"
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
-      - name: Set up JDK 17
+      - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: ${{ matrix.java }}
           cache: maven
 
-      - name: Build CLI and run core tests
-        run: mvn -B -pl cli -am package
+      - name: Verify Maven build
+        run: mvn -B verify -Dcentral.skipPublishing=true
 
   gradle-plugin:
-    name: Gradle Plugin
-    runs-on: ubuntu-latest
+    name: Gradle Plugin (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu
+            os: ubuntu-latest
+            java: "17"
+          - name: Windows
+            os: windows-latest
+            java: "17"
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
-      - name: Set up JDK 17
+      - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: ${{ matrix.java }}
           cache: maven
 
       - name: Package core jar
         run: mvn -B -pl core -am package
 
       - name: Set up Gradle wrapper permissions
+        if: runner.os == 'Linux'
         run: chmod +x gradle-plugin/gradlew
 
-      - name: Run Gradle plugin functional tests
+      - name: Run Gradle plugin validation (Linux)
+        if: runner.os == 'Linux'
         working-directory: gradle-plugin
-        run: ./gradlew test
+        run: ./gradlew test validatePlugins
 
-  maven-plugin:
-    name: Maven Plugin
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: maven
-
-      - name: Run Maven plugin integration tests
-        run: mvn -B -pl maven-plugin -am verify
-
-  nullaway-jdk25:
-    name: NullAway JDK 25
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-
-      - name: Set up JDK 25
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
-        with:
-          distribution: temurin
-          java-version: "25"
-          cache: maven
-
-      - name: Verify Maven build with NullAway profile
-        run: mvn -B verify
+      - name: Run Gradle plugin validation (Windows)
+        if: runner.os == 'Windows'
+        working-directory: gradle-plugin
+        shell: pwsh
+        run: .\gradlew.bat test validatePlugins
 
   crap-java-gate:
     name: crap-java Gate
@@ -96,7 +94,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Set up JDK 17
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
@@ -111,7 +109,7 @@ jobs:
           -Dartifact="media.barney:crap-java-cli:${CRAP_JAVA_VERSION}:jar"
           -DoutputDirectory=target/crap-java-gate
 
-      - name: Package core jar for Gradle plugin tests
+      - name: Package core jar
         run: mvn -B -pl core -am package
 
       - name: Set up Gradle wrapper permissions
@@ -121,18 +119,30 @@ jobs:
       # The Gradle Plugin job validates plugin behavior separately, but metric
       # failures under gradle-plugin/src/main/java still belong here.
       - name: Run Maven-source crap-java gate
-        run: >
-          java -jar target/crap-java-gate/crap-java-cli-${CRAP_JAVA_VERSION}.jar
-          --build-tool maven
-          core/src/main/java
-          cli/src/main/java
-          maven-plugin/src/main/java
+        run: |
+          mkdir -p target/crap-java
+          java -jar target/crap-java-gate/crap-java-cli-${CRAP_JAVA_VERSION}.jar \
+            --format text \
+            --junit-report target/crap-java/TEST-crap-java-maven-sources.xml \
+            --build-tool maven \
+            core/src/main/java cli/src/main/java maven-plugin/src/main/java
 
       - name: Run Gradle-plugin crap-java gate
-        run: >
-          java -jar target/crap-java-gate/crap-java-cli-${CRAP_JAVA_VERSION}.jar
-          --build-tool gradle
-          gradle-plugin/src/main/java
+        run: |
+          mkdir -p target/crap-java
+          java -jar target/crap-java-gate/crap-java-cli-${CRAP_JAVA_VERSION}.jar \
+            --format text \
+            --junit-report target/crap-java/TEST-crap-java-gradle-plugin.xml \
+            --build-tool gradle \
+            gradle-plugin/src/main/java
+
+      - name: Upload crap-java JUnit reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: crap-java-junit-reports
+          path: target/crap-java/TEST-crap-java-*.xml
+          if-no-files-found: ignore
 
   cognitive-java-gate:
     name: cognitive-java Gate
@@ -140,7 +150,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Set up JDK 17
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
@@ -149,12 +159,53 @@ jobs:
           java-version: "17"
           cache: maven
 
-      # The cognitive-java Gate owns Cognitive Complexity failures across every
-      # project source tree, including gradle-plugin/src/main/java. This stays
-      # separate from the Gradle Plugin build/test job and runs via the
-      # published plugin to avoid a self-referential reactor cycle.
-      - name: Run full-repo cognitive-java gate
-        run: mvn -B -N media.barney:cognitive-java-maven-plugin:0.4.0:check
+      - name: Build CLI
+        run: mvn -B -pl cli -am package
+
+      - name: Resolve cognitive-java CLI jar path
+        shell: bash
+        run: |
+          shopt -s nullglob
+          jars=(cli/target/cognitive-java-cli-*.jar)
+          filtered=()
+          for jar in "${jars[@]}"; do
+            case "$jar" in
+              *-sources.jar|*-javadoc.jar|*-shaded.jar|*original*.jar) ;;
+              *) filtered+=("$jar") ;;
+            esac
+          done
+          if [ "${#filtered[@]}" -ne 1 ]; then
+            echo "Expected exactly one built CLI jar, found ${#filtered[@]}" >&2
+            printf 'Candidates:\n%s\n' "${filtered[@]}" >&2
+            exit 1
+          fi
+          echo "CLI_JAR=${filtered[0]}" >> "$GITHUB_ENV"
+
+      # Keep the self-hosted cognitive gate split by build tool so this job
+      # owns every repository source tree, including gradle-plugin/src/main/java.
+      - name: Run Maven-source cognitive-java gate
+        run: |
+          mkdir -p target/cognitive-java
+          java -jar "$CLI_JAR" \
+            --format text \
+            --junit-report target/cognitive-java/TEST-cognitive-java-maven-sources.xml \
+            core/src/main/java cli/src/main/java maven-plugin/src/main/java
+
+      - name: Run Gradle-plugin cognitive-java gate
+        run: |
+          mkdir -p target/cognitive-java
+          java -jar "$CLI_JAR" \
+            --format text \
+            --junit-report target/cognitive-java/TEST-cognitive-java-gradle-plugin.xml \
+            gradle-plugin/src/main/java
+
+      - name: Upload cognitive-java JUnit reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cognitive-java-junit-reports
+          path: target/cognitive-java/TEST-cognitive-java-*.xml
+          if-no-files-found: ignore
 
   publishing-preflight:
     name: Publishing Preflight
@@ -166,7 +217,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Set up JDK 17
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
