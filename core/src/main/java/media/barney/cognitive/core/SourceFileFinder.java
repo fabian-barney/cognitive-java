@@ -1,14 +1,13 @@
 package media.barney.cognitive.core;
 
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.LinkedHashSet;
 
 final class SourceFileFinder {
 
@@ -34,13 +33,19 @@ final class SourceFileFinder {
         Set<Path> javaFiles = new LinkedHashSet<>();
         Path normalizedDirectory = directory.toAbsolutePath().normalize();
         for (Path sourceRoot : configuredSourceRoots) {
-            if (sourceRoot.startsWith(normalizedDirectory)) {
-                javaFiles.addAll(findJavaFilesRecursively(sourceRoot));
-            } else if (normalizedDirectory.startsWith(sourceRoot)) {
-                javaFiles.addAll(findJavaFilesRecursively(normalizedDirectory));
-            }
+            addConfiguredDirectoryMatches(javaFiles, normalizedDirectory, sourceRoot);
         }
         return javaFiles.stream().sorted(Comparator.naturalOrder()).toList();
+    }
+
+    private static void addConfiguredDirectoryMatches(Set<Path> javaFiles, Path directory, Path sourceRoot) throws IOException {
+        if (sourceRoot.startsWith(directory)) {
+            javaFiles.addAll(findJavaFilesRecursively(sourceRoot));
+            return;
+        }
+        if (directory.startsWith(sourceRoot)) {
+            javaFiles.addAll(findJavaFilesRecursively(directory));
+        }
     }
 
     private static List<Path> findJavaFilesRecursively(Path sourceRoot) throws IOException {

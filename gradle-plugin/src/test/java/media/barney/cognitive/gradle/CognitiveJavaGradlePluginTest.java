@@ -309,6 +309,51 @@ class CognitiveJavaGradlePluginTest {
     }
 
     @Test
+    void configuredSourceRootInputsTrackResolvedDirectories() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        Project project = ProjectBuilder.builder().withProjectDir(projectRoot.toFile()).build();
+        Path customRoot = projectRoot.resolve("src/custom/java/demo");
+        Files.createDirectories(customRoot);
+        Files.writeString(customRoot.resolve("Sample.java"), sampleSource());
+
+        CognitiveJavaCheckTask task = project.getTasks().register("cognitive-java-check", CognitiveJavaCheckTask.class).get();
+        task.getAnalysisRoot().fileValue(projectRoot.toFile());
+        task.getSourceRoots().set(List.of("src/custom/java"));
+
+        assertEquals(
+                List.of(projectRoot.resolve("src/custom/java").toAbsolutePath().normalize()),
+                task.getConfiguredSourceRootInputs().get().stream()
+                        .map(file -> file.toPath().toAbsolutePath().normalize())
+                        .toList()
+        );
+    }
+
+    @Test
+    void runCheckRejectsConfiguredSourceRootsOutsideAnalysisRootWithConfiguredValue() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        task.getSourceRoots().set(List.of("../outside"));
+
+        GradleException exception = assertThrows(GradleException.class, task::runCheck);
+
+        assertTrue(exception.getMessage().contains("../outside"));
+    }
+
+    @Test
+    void runCheckRejectsMissingConfiguredSourceRootsWithResolvedPath() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        task.getSourceRoots().set(List.of("src/missing/java"));
+
+        GradleException exception = assertThrows(GradleException.class, task::runCheck);
+
+        assertTrue(exception.getMessage().contains("src/missing/java"));
+        assertTrue(exception.getMessage().contains(
+                projectRoot.resolve("src/missing/java").toAbsolutePath().normalize().toString()
+        ));
+    }
+
+    @Test
     void runCheckAppliesConfiguredSourceExclusions() throws Exception {
         Path projectRoot = tempDir.toRealPath();
         Project project = ProjectBuilder.builder().withProjectDir(projectRoot.toFile()).build();

@@ -161,7 +161,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     @Optional
     @PathSensitive(PathSensitivity.RELATIVE)
     public Provider<List<File>> getConfiguredSourceRootInputs() {
-        return getSourceRoots().map(sourceRoots -> configuredSourceRootJavaFiles(sourceRoots).stream()
+        return getSourceRoots().map(sourceRoots -> resolvedConfiguredSourceRoots(sourceRoots).stream()
                 .map(Path::toFile)
                 .toList());
     }
@@ -341,13 +341,20 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     }
 
     private List<Path> configuredSourceRootJavaFiles(List<String> configuredSourceRoots) {
-        Path analysisRoot = analysisRootPath();
         LinkedHashSet<Path> javaFiles = new LinkedHashSet<>();
-        for (String configuredSourceRoot : configuredSourceRoots) {
-            Path sourceRoot = resolveSourceRoot(analysisRoot, configuredSourceRoot);
+        for (Path sourceRoot : resolvedConfiguredSourceRoots(configuredSourceRoots)) {
             javaFiles.addAll(javaFilesUnder(sourceRoot));
         }
         return javaFiles.stream().sorted(Comparator.naturalOrder()).toList();
+    }
+
+    private List<Path> resolvedConfiguredSourceRoots(List<String> configuredSourceRoots) {
+        Path analysisRoot = analysisRootPath();
+        LinkedHashSet<Path> sourceRoots = new LinkedHashSet<>();
+        for (String configuredSourceRoot : configuredSourceRoots) {
+            sourceRoots.add(resolveSourceRoot(analysisRoot, configuredSourceRoot));
+        }
+        return sourceRoots.stream().sorted(Comparator.naturalOrder()).toList();
     }
 
     private Path resolveSourceRoot(Path analysisRoot, String configuredSourceRoot) {
@@ -360,10 +367,12 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
                 ? candidate.toAbsolutePath().normalize()
                 : analysisRoot.resolve(candidate).normalize();
         if (!resolved.startsWith(analysisRoot)) {
-            throw new GradleException("sourceRoots entries must stay inside the analysisRoot root");
+            throw new GradleException("sourceRoots entry '" + configuredSourceRoot
+                    + "' must stay inside the analysisRoot: " + resolved);
         }
         if (!Files.isDirectory(resolved)) {
-            throw new GradleException("sourceRoots entries must point to existing directories");
+            throw new GradleException("sourceRoots entry '" + configuredSourceRoot
+                    + "' must point to an existing directory: " + resolved);
         }
         return resolved;
     }

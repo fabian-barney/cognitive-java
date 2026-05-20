@@ -81,6 +81,36 @@ class SourceFileFinderTest {
     }
 
     @Test
+    void findsJavaFilesWhenConfiguredDirectoryContainsAConfiguredSourceRoot() throws Exception {
+        Path sourceRoot = tempDir.resolve("module-a/src/custom/java/demo");
+        Files.createDirectories(sourceRoot);
+        Path source = sourceRoot.resolve("Custom.java");
+        Files.writeString(source, "class Custom {}\n");
+
+        List<Path> files = SourceFileFinder.findJavaFilesUnderConfiguredDirectory(
+                tempDir.resolve("module-a"),
+                List.of(tempDir.resolve("module-a/src/custom/java").toAbsolutePath().normalize())
+        );
+
+        assertEquals(List.of(source.toAbsolutePath().normalize()), files);
+    }
+
+    @Test
+    void findsJavaFilesWhenConfiguredDirectoryIsInsideAConfiguredSourceRoot() throws Exception {
+        Path sourceRoot = tempDir.resolve("module-a/src/custom/java/demo");
+        Files.createDirectories(sourceRoot);
+        Path source = sourceRoot.resolve("Custom.java");
+        Files.writeString(source, "class Custom {}\n");
+
+        List<Path> files = SourceFileFinder.findJavaFilesUnderConfiguredDirectory(
+                tempDir.resolve("module-a/src/custom/java/demo"),
+                List.of(tempDir.resolve("module-a/src/custom/java").toAbsolutePath().normalize())
+        );
+
+        assertEquals(List.of(source.toAbsolutePath().normalize()), files);
+    }
+
+    @Test
     void doesNotFollowSymlinkedDirectoriesDuringSourceDiscovery() throws Exception {
         Path realRoot = tempDir.resolve("src/main/java/demo");
         Files.createDirectories(realRoot);
