@@ -50,7 +50,7 @@ class ChangedFileDetectorTest {
 
     @Test
     void includesGitErrorOutputWhenStatusFails() {
-        IllegalStateException error = assertThrows(IllegalStateException.class,
+        IOException error = assertThrows(IOException.class,
                 () -> ChangedFileDetector.changedJavaFiles(tempDir));
 
         assertTrue(Objects.requireNonNull(error.getMessage()).contains("not a git repository"));
@@ -153,6 +153,54 @@ class ChangedFileDetectorTest {
         assertEquals(List.of(tempDir.resolve("src/main/java/demo/NewFile.java")), changed);
     }
 
+    @Test
+    void filtersChangedFilesToConfiguredSourceRootsOnly() throws Exception {
+        run(tempDir, "git", "init");
+        run(tempDir, "git", "config", "user.email", "test@example.com");
+        run(tempDir, "git", "config", "user.name", "test");
+
+        Path customRoot = tempDir.resolve("src/custom/java/demo");
+        Path defaultRoot = tempDir.resolve("src/main/java/demo");
+        Files.createDirectories(customRoot);
+        Files.createDirectories(defaultRoot);
+        Path customSource = customRoot.resolve("Custom.java");
+        Path defaultSource = defaultRoot.resolve("Default.java");
+        Files.writeString(customSource, "class Custom {}\n");
+        Files.writeString(defaultSource, "class Default {}\n");
+
+        run(tempDir, "git", "add", ".");
+        run(tempDir, "git", "commit", "-m", "init");
+
+        Files.writeString(customSource, "class Custom { int x = 1; }\n");
+        Files.writeString(defaultSource, "class Default { int x = 1; }\n");
+
+        List<Path> changed = ChangedFileDetector.changedJavaFilesUnderSourceRoots(
+                tempDir,
+                List.of(tempDir.resolve("src/custom/java").toAbsolutePath().normalize()));
+
+        assertEquals(List.of(customSource.toAbsolutePath().normalize()), changed);
+    }
+
+    @Test
+    void timesOutNoisyGitProcessesWithUsefulContext() {
+        IOException error = assertThrows(IOException.class,
+                () -> ChangedFileDetector.changedJavaFiles(tempDir, ignored -> new TimeoutProcess()));
+
+        assertTrue(Objects.requireNonNull(error.getMessage()).contains("git status timed out after"));
+    }
+
+    @Test
+    void truncatesCapturedGitOutputOnFailure() {
+        String noisy = "x".repeat(ChangedFileDetectorTestSupport.OUTPUT_LENGTH);
+
+        IOException error = assertThrows(IOException.class,
+                () -> ChangedFileDetector.changedJavaFiles(tempDir,
+                        ignored -> new CompletedProcess(1, noisy, noisy)));
+
+        assertTrue(Objects.requireNonNull(error.getMessage()).contains("git status failed with exit 1"));
+        assertTrue(error.getMessage().contains("[output truncated]"));
+    }
+
     private static void run(Path dir, String... command) throws IOException, InterruptedException {
         Process process = new ProcessBuilder(command)
                 .directory(dir.toFile())
@@ -242,6 +290,119 @@ class ChangedFileDetectorTest {
 
         private boolean fullyRead() {
             return fullyRead;
+        }
+    }
+
+    private static final class TimeoutProcess extends Process {
+        private boolean destroyed;
+
+        @Override
+        public OutputStream getOutputStream() {
+            return OutputStream.nullOutputStream();
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            return InputStream.nullInputStream();
+        }
+
+        @Override
+        public InputStream getErrorStream() {
+            return InputStream.nullInputStream();
+        }
+
+        @Override
+        public int waitFor() {
+            return destroyed ? 143 : 0;
+        }
+
+        @Override
+        public boolean waitFor(long timeout, java.util.concurrent.TimeUnit unit) {
+            return destroyed;
+        }
+
+        @Override
+        public int exitValue() {
+            return 143;
+        }
+
+        @Override
+        public void destroy() {
+            destroyed = true;
+        }
+
+        @Override
+        public Process destroyForcibly() {
+            destroyed = true;
+            return this;
+        }
+
+        @Override
+        public boolean isAlive() {
+            return !destroyed;
+        }
+    }
+
+    private static final class CompletedProcess extends Process {
+        private final ByteArrayInputStream stdout;
+        private final ByteArrayInputStream stderr;
+        private final int exitCode;
+
+        private CompletedProcess(int exitCode, String stdout, String stderr) {
+            this.exitCode = exitCode;
+            this.stdout = new ByteArrayInputStream(stdout.getBytes(StandardCharsets.UTF_8));
+            this.stderr = new ByteArrayInputStream(stderr.getBytes(StandardCharsets.UTF_8));
+        }
+
+        @Override
+        public OutputStream getOutputStream() {
+            return OutputStream.nullOutputStream();
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            return stdout;
+        }
+
+        @Override
+        public InputStream getErrorStream() {
+            return stderr;
+        }
+
+        @Override
+        public int waitFor() {
+            return exitCode;
+        }
+
+        @Override
+        public boolean waitFor(long timeout, java.util.concurrent.TimeUnit unit) {
+            return true;
+        }
+
+        @Override
+        public int exitValue() {
+            return exitCode;
+        }
+
+        @Override
+        public void destroy() {
+        }
+
+        @Override
+        public Process destroyForcibly() {
+            return this;
+        }
+
+        @Override
+        public boolean isAlive() {
+            return false;
+        }
+    }
+
+    private static final class ChangedFileDetectorTestSupport {
+        private static final int OUTPUT_LENGTH = 70_000;
+
+        private ChangedFileDetectorTestSupport() {
         }
     }
 }

@@ -16,6 +16,7 @@ class CliArgumentsParserTest {
         assertEquals(ReportFormat.TOON, args.reportFormat());
         assertEquals(15, args.threshold());
         assertEquals(List.of(), args.fileArgs());
+        assertEquals(List.of(), args.sourceRoots());
         assertEquals(List.of(), args.exclusionOptions().excludes());
         assertEquals(List.of(), args.exclusionOptions().excludeClasses());
         assertEquals(List.of(), args.exclusionOptions().excludeAnnotations());
@@ -155,6 +156,8 @@ class CliArgumentsParserTest {
     @Test
     void parsesSourceExclusionOptions() {
         CliArguments args = CliArgumentsParser.parse(new String[]{
+                "--source-root=src/custom/java",
+                "--source-root", "module-a/src/generated/java",
                 "--exclude=module-a/**",
                 "--exclude", "**/generated/**",
                 "--exclude-class", ".*MapperImpl$",
@@ -163,6 +166,7 @@ class CliArgumentsParserTest {
                 "--changed"
         });
 
+        assertEquals(List.of("src/custom/java", "module-a/src/generated/java"), args.sourceRoots());
         assertEquals(List.of("module-a/**", "**/generated/**"), args.exclusionOptions().excludes());
         assertEquals(List.of(".*MapperImpl$"), args.exclusionOptions().excludeClasses());
         assertEquals(List.of("Generated"), args.exclusionOptions().excludeAnnotations());
@@ -177,6 +181,8 @@ class CliArgumentsParserTest {
                 () -> CliArgumentsParser.parse(new String[]{"--exclude-class"})).getMessage());
         assertEquals("--exclude-annotation requires an annotation name", assertThrows(IllegalArgumentException.class,
                 () -> CliArgumentsParser.parse(new String[]{"--exclude-annotation"})).getMessage());
+        assertEquals("--source-root requires a path", assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"--source-root"})).getMessage());
         assertEquals("--use-default-exclusions requires true or false when assigned", assertThrows(IllegalArgumentException.class,
                 () -> CliArgumentsParser.parse(new String[]{"--use-default-exclusions=maybe"})).getMessage());
     }

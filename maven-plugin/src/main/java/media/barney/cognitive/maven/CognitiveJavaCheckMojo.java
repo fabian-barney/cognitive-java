@@ -57,6 +57,12 @@ public class CognitiveJavaCheckMojo extends AbstractMojo {
     private String threshold = "15";
 
     @Parameter
+    private List<String> sourceRoots = new ArrayList<>();
+
+    @Parameter(property = "cognitiveJava.sourceRoots")
+    private @Nullable String sourceRootsProperty;
+
+    @Parameter
     private List<String> excludes = new ArrayList<>();
 
     @Parameter(property = "cognitiveJava.excludes")
@@ -122,6 +128,7 @@ public class CognitiveJavaCheckMojo extends AbstractMojo {
         }
         addOptionalBooleanArgument(args, "--failures-only", failuresOnly);
         addOptionalBooleanArgument(args, "--omit-redundancy", omitRedundancy);
+        addRepeated(args, "--source-root", sourceRootsProperty, sourceRoots);
         addRepeated(args, "--exclude", excludesProperty, excludes);
         addRepeated(args, "--exclude-class", excludeClassesProperty, excludeClasses);
         addRepeated(args, "--exclude-annotation", excludeAnnotationsProperty, excludeAnnotations);

@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
@@ -103,6 +104,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         getOmitRedundancy().convention(getAgent());
         getJunit().convention(true);
         getJunitReport().convention(defaultJunitReport);
+        getSourceRoots().convention(List.of());
         getExcludes().convention(List.of());
         getExcludeClasses().convention(List.of());
         getExcludeAnnotations().convention(List.of());
@@ -153,6 +155,18 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     public abstract RegularFileProperty getJunitReport();
 
     @Input
+    public abstract ListProperty<String> getSourceRoots();
+
+    @InputFiles
+    @Optional
+    @PathSensitive(PathSensitivity.RELATIVE)
+    public Provider<List<File>> getConfiguredSourceRootInputs() {
+        return getSourceRoots().map(sourceRoots -> configuredSourceRootJavaFiles(sourceRoots).stream()
+                .map(Path::toFile)
+                .toList());
+    }
+
+    @Input
     public abstract ListProperty<String> getExcludes();
 
     @Input
@@ -190,11 +204,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         Path configuredOutputPath = outputPath();
         Path configuredJunitReportPath = junitReportPath();
         validateReportOptions(configuredOutputPath, configuredJunitReportPath);
-        List<String> sourceArguments = getAnalysisSources().getFiles().stream()
-                .map(file -> getAnalysisRoot().get().getAsFile().toPath().toAbsolutePath().normalize()
-                        .relativize(file.toPath().toAbsolutePath().normalize()).toString().replace('\\', '/'))
-                .sorted(Comparator.naturalOrder())
-                .toList();
+        List<String> sourceArguments = sourceArguments();
         if (sourceArguments.isEmpty()) {
             runWithoutSourcesWithReportStateLock();
             writeExecutionMarker();
@@ -285,6 +295,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         }
         arguments.add("--failures-only=" + getFailuresOnly().get());
         arguments.add("--omit-redundancy=" + getOmitRedundancy().get());
+        addRepeated(arguments, "--source-root", getSourceRoots().get());
         addRepeated(arguments, "--exclude", getExcludes().get());
         addRepeated(arguments, "--exclude-class", getExcludeClasses().get());
         addRepeated(arguments, "--exclude-annotation", getExcludeAnnotations().get());
@@ -307,6 +318,65 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         for (String value : values) {
             arguments.add(option);
             arguments.add(value);
+        }
+    }
+
+    private List<String> sourceArguments() {
+        Path analysisRoot = analysisRootPath();
+        return selectedSourceFiles().stream()
+                .map(file -> analysisRoot.relativize(file).toString().replace('\\', '/'))
+                .sorted(Comparator.naturalOrder())
+                .toList();
+    }
+
+    private List<Path> selectedSourceFiles() {
+        List<String> configuredSourceRoots = getSourceRoots().get();
+        if (configuredSourceRoots.isEmpty()) {
+            return getAnalysisSources().getFiles().stream()
+                    .map(file -> file.toPath().toAbsolutePath().normalize())
+                    .sorted(Comparator.naturalOrder())
+                    .toList();
+        }
+        return configuredSourceRootJavaFiles(configuredSourceRoots);
+    }
+
+    private List<Path> configuredSourceRootJavaFiles(List<String> configuredSourceRoots) {
+        Path analysisRoot = analysisRootPath();
+        LinkedHashSet<Path> javaFiles = new LinkedHashSet<>();
+        for (String configuredSourceRoot : configuredSourceRoots) {
+            Path sourceRoot = resolveSourceRoot(analysisRoot, configuredSourceRoot);
+            javaFiles.addAll(javaFilesUnder(sourceRoot));
+        }
+        return javaFiles.stream().sorted(Comparator.naturalOrder()).toList();
+    }
+
+    private Path resolveSourceRoot(Path analysisRoot, String configuredSourceRoot) {
+        String trimmed = configuredSourceRoot.trim();
+        if (trimmed.isEmpty()) {
+            throw new GradleException("sourceRoots entries must not be blank");
+        }
+        Path candidate = Path.of(trimmed);
+        Path resolved = candidate.isAbsolute()
+                ? candidate.toAbsolutePath().normalize()
+                : analysisRoot.resolve(candidate).normalize();
+        if (!resolved.startsWith(analysisRoot)) {
+            throw new GradleException("sourceRoots entries must stay inside the analysisRoot root");
+        }
+        if (!Files.isDirectory(resolved)) {
+            throw new GradleException("sourceRoots entries must point to existing directories");
+        }
+        return resolved;
+    }
+
+    private List<Path> javaFilesUnder(Path sourceRoot) {
+        try (Stream<Path> stream = Files.walk(sourceRoot)) {
+            return stream.filter(Files::isRegularFile)
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .map(path -> path.toAbsolutePath().normalize())
+                    .sorted(Comparator.naturalOrder())
+                    .toList();
+        } catch (IOException exception) {
+            throw new GradleException("Failed to read source root: " + sourceRoot, exception);
         }
     }
 

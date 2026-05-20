@@ -2,6 +2,7 @@ package media.barney.cognitive.core;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.Assumptions;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -58,5 +59,44 @@ class SourceFileFinderTest {
         List<Path> files = SourceFileFinder.findAllJavaFilesUnderSourceRoots(tempDir.resolve("src/main/java"));
 
         assertEquals(List.of(source), files);
+    }
+
+    @Test
+    void findsAllJavaFilesUnderConfiguredSourceRoots() throws Exception {
+        Path customRoot = tempDir.resolve("src/custom/java/demo");
+        Files.createDirectories(customRoot);
+        Path source = customRoot.resolve("Custom.java");
+        Files.writeString(source, "class Custom {}\n");
+
+        Path otherRoot = tempDir.resolve("module-a/generated/java/demo");
+        Files.createDirectories(otherRoot);
+        Path otherSource = otherRoot.resolve("Generated.java");
+        Files.writeString(otherSource, "class Generated {}\n");
+
+        List<Path> files = SourceFileFinder.findAllJavaFiles(AnalysisSourceRoots.resolveConfiguredSourceRoots(
+                tempDir,
+                List.of("src/custom/java", "module-a/generated/java")));
+
+        assertEquals(List.of(otherSource, source), files);
+    }
+
+    @Test
+    void doesNotFollowSymlinkedDirectoriesDuringSourceDiscovery() throws Exception {
+        Path realRoot = tempDir.resolve("src/main/java/demo");
+        Files.createDirectories(realRoot);
+        Files.writeString(realRoot.resolve("Sample.java"), "class Sample {}\n");
+
+        Path linkedParent = tempDir.resolve("linked");
+        Files.createDirectories(linkedParent);
+        Path symlink = linkedParent.resolve("src-link");
+        try {
+            Files.createSymbolicLink(symlink, tempDir.resolve("src"));
+        } catch (UnsupportedOperationException | java.nio.file.FileSystemException exception) {
+            Assumptions.assumeTrue(false, "Symbolic links are unavailable on this platform");
+        }
+
+        List<Path> files = SourceFileFinder.findAllJavaFilesUnderSourceRoots(tempDir);
+
+        assertEquals(List.of(realRoot.resolve("Sample.java")), files);
     }
 }

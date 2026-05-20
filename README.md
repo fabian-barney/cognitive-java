@@ -84,6 +84,16 @@ Built-in exclusions stay conservative and generated-code-focused:
 
 Full JSON, text, and JUnit outputs include exclusion audit counts. Compact agent-mode primary reports stay focused on actionable failures.
 
+Additional source selection and exclusion controls:
+
+- `--source-root <path>` repeatable
+- `--exclude <glob>` repeatable
+- `--exclude-class <regex>` repeatable
+- `--exclude-annotation <name>` repeatable
+- `--use-default-exclusions[=true|false]`
+
+Custom source roots are resolved against the analysis root. Directory traversal does not follow symlinks.
+
 ## Gradle Plugin
 
 Published plugin:
@@ -105,7 +115,13 @@ Run:
 ./gradlew cognitive-java-check
 ```
 
-Configure report controls, threshold, and exclusions:
+Gradle configuration also supports:
+
+- `sourceRoots`
+- `excludes`
+- `excludeClasses`
+- `excludeAnnotations`
+- `useDefaultExclusions`
 
 ```kotlin
 cognitiveJava {
@@ -179,6 +195,7 @@ Equivalent properties are available:
 - `cognitiveJava.junit`
 - `cognitiveJava.junitReport`
 - `cognitiveJava.threshold`
+- `cognitiveJava.sourceRoots`
 - `cognitiveJava.excludes`
 - `cognitiveJava.excludeClasses`
 - `cognitiveJava.excludeAnnotations`
