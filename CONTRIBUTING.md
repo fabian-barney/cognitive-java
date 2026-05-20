@@ -9,7 +9,7 @@ All changes in this repository are expected to be issue-linked.
 3. Reference the issue number in every commit message.
 4. Open a PR that closes the issue and keeps the change scoped to that issue.
 5. After each push, review new PR feedback, fix valid findings in a follow-up push, reply when a finding is not applicable, and resolve threads only after the fix or explicit invalidation response.
-6. Merge only after the latest push has a newer clean review and all required checks are green.
+6. Merge only after the latest push has a new clean review and all required checks are green.
 
 ## Repository Layout
 

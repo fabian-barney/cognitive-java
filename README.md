@@ -67,7 +67,7 @@ java -jar cognitive-java-cli-<version>.jar --exclude 'module-a/**' --exclude-cla
 - Machine-readable reports expose top-level `status` and `threshold`
 - Method entries use `status`, `cc`, `method`, `src`, `lineStart`, and `lineEnd`
 
-Report paths resolve against the analysis root, must stay inside it after normalization/canonicalization, and cannot target the filesystem root, an existing directory, or the same file for both primary and JUnit output.
+Report paths resolve against the analysis root, must stay inside it after normalization/canonicalization, and cannot target the filesystem root, the analysis root itself, an existing directory, or the same file for both primary and JUnit output.
 
 ## Source Discovery And Exclusions
 
@@ -191,6 +191,7 @@ Published releases do not require custom `<pluginRepositories>` entries or consu
 - `0` success, threshold respected
 - `1` parse or configuration error
 - `2` threshold exceeded
+- `3` unexpected internal error
 
 ## Contributing
 

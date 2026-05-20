@@ -41,7 +41,7 @@ jobs:
           cache: maven
 
       - name: Verify Maven build
-        run: mvn -B verify -Dcentral.skipPublishing=true
+        run: mvn -B verify '-Dcentral.skipPublishing=true'
 
   gradle-plugin:
     name: Gradle Plugin (${{ matrix.name }})
