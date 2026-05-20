@@ -2,6 +2,7 @@ package media.barney.cognitive.core;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -49,12 +50,12 @@ final class SourceFileFinder {
     }
 
     private static List<Path> findJavaFilesRecursively(Path sourceRoot) throws IOException {
-        if (!Files.isDirectory(sourceRoot)) {
+        if (!Files.isDirectory(sourceRoot, LinkOption.NOFOLLOW_LINKS)) {
             return List.of();
         }
         List<Path> javaFiles = new ArrayList<>();
         try (var stream = Files.walk(sourceRoot)) {
-            stream.filter(Files::isRegularFile)
+            stream.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
                     .filter(path -> path.toString().endsWith(".java"))
                     .map(path -> path.toAbsolutePath().normalize())
                     .forEach(javaFiles::add);

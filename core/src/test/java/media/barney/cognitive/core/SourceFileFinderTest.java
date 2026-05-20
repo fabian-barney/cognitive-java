@@ -129,4 +129,22 @@ class SourceFileFinderTest {
 
         assertEquals(List.of(realRoot.resolve("Sample.java")), files);
     }
+
+    @Test
+    void doesNotAnalyzeSymlinkedJavaFilesInsideSourceRoots() throws Exception {
+        Path sourceRoot = tempDir.resolve("src/main/java/demo");
+        Files.createDirectories(sourceRoot);
+        Path realSource = sourceRoot.resolve("Sample.java");
+        Files.writeString(realSource, "class Sample {}\n");
+        Path linkedSource = sourceRoot.resolve("Linked.java");
+        try {
+            Files.createSymbolicLink(linkedSource, realSource);
+        } catch (UnsupportedOperationException | java.nio.file.FileSystemException exception) {
+            Assumptions.assumeTrue(false, "Symbolic links are unavailable on this platform");
+        }
+
+        List<Path> files = SourceFileFinder.findAllJavaFilesUnderSourceRoots(tempDir);
+
+        assertEquals(List.of(realSource), files);
+    }
 }

@@ -31,6 +31,7 @@ final class ChangedFileDetector {
         if (exit != 0) {
             throw new IOException("git status failed with exit " + exit + formatCapturedOutput(stdout, stderr));
         }
+        ensureCompleteStatusOutput(stdout, stderr);
 
         List<Path> files = parseStatusOutput(projectRoot, stdout.bytes());
         files.sort(Path::compareTo);
@@ -100,6 +101,14 @@ final class ChangedFileDetector {
             return "";
         }
         return " (" + String.join("; ", details) + ")";
+    }
+
+    private static void ensureCompleteStatusOutput(CapturedOutput stdout, CapturedOutput stderr) throws IOException {
+        if (stdout.isTruncated()) {
+            throw new IOException("git status output exceeded " + MAX_CAPTURED_OUTPUT_BYTES
+                    + " bytes; refusing incomplete changed-file detection"
+                    + formatCapturedOutput(stdout, stderr));
+        }
     }
 
     private static List<Path> parseStatusOutput(Path root, byte[] output) throws IOException {
@@ -208,6 +217,10 @@ final class ChangedFileDetector {
 
         private byte[] bytes() {
             return buffer.toByteArray();
+        }
+
+        private boolean isTruncated() {
+            return truncated;
         }
 
         private String text() {

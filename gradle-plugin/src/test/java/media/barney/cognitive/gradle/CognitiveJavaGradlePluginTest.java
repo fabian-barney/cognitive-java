@@ -354,6 +354,21 @@ class CognitiveJavaGradlePluginTest {
     }
 
     @Test
+    void runCheckRejectsConfiguredSymlinkSourceRoots() throws Exception {
+        assumeTrue(!isWindows(), "This symlink test requires filesystem symlinks");
+        Path projectRoot = tempDir.toRealPath();
+        Path realSourceRoot = projectRoot.resolve("src/custom/java");
+        Files.createDirectories(realSourceRoot);
+        Path linkedSourceRoot = Files.createSymbolicLink(projectRoot.resolve("linked-source-root"), realSourceRoot);
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        task.getSourceRoots().set(List.of(linkedSourceRoot.getFileName().toString()));
+
+        GradleException exception = assertThrows(GradleException.class, task::runCheck);
+
+        assertTrue(exception.getMessage().contains("must not point to or traverse a symlink"));
+    }
+
+    @Test
     void runCheckAppliesConfiguredSourceExclusions() throws Exception {
         Path projectRoot = tempDir.toRealPath();
         Project project = ProjectBuilder.builder().withProjectDir(projectRoot.toFile()).build();

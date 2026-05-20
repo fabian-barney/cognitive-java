@@ -3,6 +3,7 @@ package media.barney.cognitive.core;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -42,27 +43,78 @@ final class AnalysisSourceRoots {
 
     static List<Path> resolveConfiguredSourceRoots(Path analysisRoot, List<String> configuredSourceRoots) throws IOException {
         Path normalizedAnalysisRoot = analysisRoot.toAbsolutePath().normalize();
+        Path realAnalysisRoot = normalizedAnalysisRoot.toRealPath();
         Set<Path> resolvedRoots = new LinkedHashSet<>();
         for (String configuredSourceRoot : configuredSourceRoots) {
-            String trimmed = configuredSourceRoot.trim();
-            if (trimmed.isEmpty()) {
-                throw new IllegalArgumentException("--source-root requires a path");
-            }
-            Path candidate = Path.of(trimmed);
-            Path resolved = candidate.isAbsolute()
-                    ? candidate.toAbsolutePath().normalize()
-                    : normalizedAnalysisRoot.resolve(candidate).normalize();
-            if (!resolved.startsWith(normalizedAnalysisRoot)) {
-                throw new IllegalArgumentException("--source-root must stay inside the analysis root: "
-                        + configuredSourceRoot);
-            }
-            if (!Files.isDirectory(resolved)) {
-                throw new IllegalArgumentException("--source-root must be an existing directory: "
-                        + configuredSourceRoot);
-            }
+            Path resolved = resolveConfiguredSourceRoot(normalizedAnalysisRoot, configuredSourceRoot);
+            validateConfiguredSourceRoot(normalizedAnalysisRoot, realAnalysisRoot, configuredSourceRoot, resolved);
             resolvedRoots.add(resolved);
         }
         return resolvedRoots.stream().sorted().toList();
+    }
+
+    private static Path resolveConfiguredSourceRoot(Path normalizedAnalysisRoot, String configuredSourceRoot) {
+        String trimmed = configuredSourceRoot.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("--source-root requires a path");
+        }
+        Path candidate = Path.of(trimmed);
+        return candidate.isAbsolute()
+                ? candidate.toAbsolutePath().normalize()
+                : normalizedAnalysisRoot.resolve(candidate).normalize();
+    }
+
+    private static void validateConfiguredSourceRoot(
+            Path normalizedAnalysisRoot,
+            Path realAnalysisRoot,
+            String configuredSourceRoot,
+            Path resolved
+    ) throws IOException {
+        ensureInsideAnalysisRoot(normalizedAnalysisRoot, configuredSourceRoot, resolved);
+        ensureNoTraversedSymlink(normalizedAnalysisRoot, configuredSourceRoot, resolved);
+        ensureExistingDirectory(configuredSourceRoot, resolved);
+        ensureRealPathInsideAnalysisRoot(realAnalysisRoot, configuredSourceRoot, resolved);
+    }
+
+    private static void ensureInsideAnalysisRoot(Path normalizedAnalysisRoot, String configuredSourceRoot, Path resolved) {
+        if (!resolved.startsWith(normalizedAnalysisRoot)) {
+            throw new IllegalArgumentException("--source-root must stay inside the analysis root: "
+                    + configuredSourceRoot);
+        }
+    }
+
+    private static void ensureNoTraversedSymlink(Path normalizedAnalysisRoot, String configuredSourceRoot, Path resolved)
+            throws IOException {
+        if (containsSymbolicLink(normalizedAnalysisRoot, resolved)) {
+            throw new IllegalArgumentException("--source-root must not point to or traverse a symlink: "
+                    + configuredSourceRoot);
+        }
+    }
+
+    private static void ensureExistingDirectory(String configuredSourceRoot, Path resolved) {
+        if (!Files.isDirectory(resolved, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IllegalArgumentException("--source-root must be an existing directory: "
+                    + configuredSourceRoot);
+        }
+    }
+
+    private static void ensureRealPathInsideAnalysisRoot(Path realAnalysisRoot, String configuredSourceRoot, Path resolved)
+            throws IOException {
+        if (!resolved.toRealPath().startsWith(realAnalysisRoot)) {
+            throw new IllegalArgumentException("--source-root must stay inside the analysis root: "
+                    + configuredSourceRoot);
+        }
+    }
+
+    private static boolean containsSymbolicLink(Path root, Path path) throws IOException {
+        Path current = root;
+        for (Path segment : root.relativize(path)) {
+            current = current.resolve(segment);
+            if (Files.isSymbolicLink(current)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static boolean isUnderAnySourceRoot(Path path, List<Path> sourceRoots) {

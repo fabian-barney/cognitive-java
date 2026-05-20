@@ -28,6 +28,7 @@ import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -366,26 +367,71 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         Path resolved = candidate.isAbsolute()
                 ? candidate.toAbsolutePath().normalize()
                 : analysisRoot.resolve(candidate).normalize();
-        if (!resolved.startsWith(analysisRoot)) {
-            throw new GradleException("sourceRoots entry '" + configuredSourceRoot
-                    + "' must stay inside the analysisRoot: " + resolved);
-        }
-        if (!Files.isDirectory(resolved)) {
-            throw new GradleException("sourceRoots entry '" + configuredSourceRoot
-                    + "' must point to an existing directory: " + resolved);
-        }
+        validateSourceRootInsideAnalysisRoot(analysisRoot, configuredSourceRoot, resolved);
+        validateSourceRootHasNoSymlinks(analysisRoot, configuredSourceRoot, resolved);
+        validateSourceRootDirectory(configuredSourceRoot, resolved);
+        validateSourceRootRealPath(analysisRoot, configuredSourceRoot, resolved);
         return resolved;
     }
 
     private List<Path> javaFilesUnder(Path sourceRoot) {
+        if (!Files.isDirectory(sourceRoot, LinkOption.NOFOLLOW_LINKS)) {
+            return List.of();
+        }
         try (Stream<Path> stream = Files.walk(sourceRoot)) {
-            return stream.filter(Files::isRegularFile)
+            return stream.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
                     .filter(path -> path.toString().endsWith(".java"))
                     .map(path -> path.toAbsolutePath().normalize())
-                    .sorted(Comparator.naturalOrder())
                     .toList();
         } catch (IOException exception) {
             throw new GradleException("Failed to read source root: " + sourceRoot, exception);
+        }
+    }
+
+    private void validateSourceRootInsideAnalysisRoot(Path analysisRoot, String configuredSourceRoot, Path resolved) {
+        if (!resolved.startsWith(analysisRoot)) {
+            throw new GradleException("sourceRoots entry '" + configuredSourceRoot
+                    + "' must stay inside the analysisRoot: " + resolved);
+        }
+    }
+
+    private void validateSourceRootHasNoSymlinks(Path analysisRoot, String configuredSourceRoot, Path resolved) {
+        if (containsSymbolicLink(analysisRoot, resolved)) {
+            throw new GradleException("sourceRoots entry '" + configuredSourceRoot
+                    + "' must not point to or traverse a symlink: " + resolved);
+        }
+    }
+
+    private void validateSourceRootDirectory(String configuredSourceRoot, Path resolved) {
+        if (!Files.isDirectory(resolved, LinkOption.NOFOLLOW_LINKS)) {
+            throw new GradleException("sourceRoots entry '" + configuredSourceRoot
+                    + "' must point to an existing directory: " + resolved);
+        }
+    }
+
+    private void validateSourceRootRealPath(Path analysisRoot, String configuredSourceRoot, Path resolved) {
+        try {
+            if (!resolved.toRealPath().startsWith(analysisRoot.toRealPath())) {
+                throw new GradleException("sourceRoots entry '" + configuredSourceRoot
+                        + "' must stay inside the analysisRoot: " + resolved);
+            }
+        } catch (IOException exception) {
+            throw new GradleException("Failed to validate sourceRoots entry '" + configuredSourceRoot + "'", exception);
+        }
+    }
+
+    private boolean containsSymbolicLink(Path root, Path path) {
+        Path current = root;
+        try {
+            for (Path segment : root.relativize(path)) {
+                current = current.resolve(segment);
+                if (Files.isSymbolicLink(current)) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (IllegalArgumentException exception) {
+            return true;
         }
     }
 

@@ -201,6 +201,18 @@ class ChangedFileDetectorTest {
         assertTrue(error.getMessage().contains("[output truncated]"));
     }
 
+    @Test
+    void rejectsTruncatedGitStatusOutputOnSuccess() {
+        String noisy = "?? src/main/java/demo/" + "x".repeat(ChangedFileDetectorTestSupport.OUTPUT_LENGTH) + ".java\0";
+
+        IOException error = assertThrows(IOException.class,
+                () -> ChangedFileDetector.changedJavaFiles(tempDir,
+                        ignored -> new CompletedProcess(0, noisy, "")));
+
+        assertTrue(Objects.requireNonNull(error.getMessage()).contains("refusing incomplete changed-file detection"));
+        assertTrue(error.getMessage().contains("[output truncated]"));
+    }
+
     private static void run(Path dir, String... command) throws IOException, InterruptedException {
         Process process = new ProcessBuilder(command)
                 .directory(dir.toFile())
