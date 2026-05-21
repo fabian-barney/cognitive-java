@@ -224,6 +224,18 @@ class ChangedFileDetectorTest {
         assertTrue(error.getMessage().contains("[output truncated]"));
     }
 
+    @Test
+    void closesCaptureStreamsWhenTimedOutGitProcessWillNotTerminate() {
+        StubbornTimeoutProcess process = new StubbornTimeoutProcess();
+
+        IOException error = assertThrows(IOException.class,
+                () -> ChangedFileDetector.changedJavaFiles(tempDir, ignored -> process));
+
+        assertTrue(Objects.requireNonNull(error.getMessage()).contains("could not be terminated within"));
+        assertTrue(process.stdoutClosed());
+        assertTrue(process.stderrClosed());
+    }
+
     private static void run(Path dir, String... command) throws IOException, InterruptedException {
         Process process = new ProcessBuilder(command)
                 .directory(dir.toFile())
@@ -428,6 +440,63 @@ class ChangedFileDetectorTest {
         }
     }
 
+    private static final class StubbornTimeoutProcess extends Process {
+        private final BlockingInputStream stdout = new BlockingInputStream();
+        private final BlockingInputStream stderr = new BlockingInputStream();
+
+        @Override
+        public OutputStream getOutputStream() {
+            return OutputStream.nullOutputStream();
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            return stdout;
+        }
+
+        @Override
+        public InputStream getErrorStream() {
+            return stderr;
+        }
+
+        @Override
+        public int waitFor() {
+            return 143;
+        }
+
+        @Override
+        public boolean waitFor(long timeout, java.util.concurrent.TimeUnit unit) {
+            return false;
+        }
+
+        @Override
+        public int exitValue() {
+            return 143;
+        }
+
+        @Override
+        public void destroy() {
+        }
+
+        @Override
+        public Process destroyForcibly() {
+            return this;
+        }
+
+        @Override
+        public boolean isAlive() {
+            return true;
+        }
+
+        private boolean stdoutClosed() {
+            return stdout.closed();
+        }
+
+        private boolean stderrClosed() {
+            return stderr.closed();
+        }
+    }
+
     private static final class FailingInputStream extends InputStream {
         @Override
         public int read() throws IOException {
@@ -437,6 +506,43 @@ class ChangedFileDetectorTest {
         @Override
         public int read(byte[] buffer, int offset, int length) throws IOException {
             throw new IOException("boom");
+        }
+    }
+
+    private static final class BlockingInputStream extends InputStream {
+        private boolean closed;
+
+        @Override
+        public synchronized int read() throws IOException {
+            waitUntilClosed();
+            return -1;
+        }
+
+        @Override
+        public synchronized int read(byte[] buffer, int offset, int length) throws IOException {
+            waitUntilClosed();
+            return -1;
+        }
+
+        @Override
+        public synchronized void close() {
+            closed = true;
+            notifyAll();
+        }
+
+        private synchronized boolean closed() {
+            return closed;
+        }
+
+        private synchronized void waitUntilClosed() throws IOException {
+            while (!closed) {
+                try {
+                    wait();
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("interrupted", exception);
+                }
+            }
         }
     }
 

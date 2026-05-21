@@ -39,8 +39,9 @@ final class ChangedFileDetector {
     }
 
     static List<Path> changedJavaFilesUnderSourceRoots(Path projectRoot) throws IOException, InterruptedException {
-        List<Path> sourceRoots = AnalysisSourceRoots.discoverDefaultSourceRoots(projectRoot);
-        return changedJavaFilesUnderSourceRoots(projectRoot, sourceRoots);
+        return changedJavaFiles(projectRoot).stream()
+                .filter(ProductionSourceRoots::isUnderProductionSourceRoot)
+                .toList();
     }
 
     static List<Path> changedJavaFilesUnderSourceRoots(Path projectRoot, List<Path> sourceRoots)
@@ -73,6 +74,10 @@ final class ChangedFileDetector {
         if (!process.waitFor(GIT_STATUS_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
             process.destroyForcibly();
             if (!process.waitFor(TERMINATION_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
+                stdout.close();
+                stderr.close();
+                stdout.await();
+                stderr.await();
                 throw new IOException("git status timed out after " + GIT_STATUS_TIMEOUT
                         + " and could not be terminated within " + TERMINATION_TIMEOUT
                         + formatCapturedOutput(stdout, stderr));
@@ -207,6 +212,10 @@ final class ChangedFileDetector {
             if (thread != null) {
                 thread.join();
             }
+        }
+
+        private void close() throws IOException {
+            inputStream.close();
         }
 
         private byte[] bytes() {
