@@ -179,6 +179,7 @@ final class ChangedFileDetector {
     private static final class CapturedOutput {
         private final java.io.InputStream inputStream;
         private final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        private final Object lock = new Object();
         private Thread thread = new Thread(() -> { }, "cognitive-java-git-output");
         private boolean truncated;
 
@@ -192,16 +193,10 @@ final class ChangedFileDetector {
                     byte[] chunk = new byte[4096];
                     int read;
                     while ((read = inputStream.read(chunk)) >= 0) {
-                        int remaining = MAX_CAPTURED_OUTPUT_BYTES - buffer.size();
-                        if (remaining > 0) {
-                            buffer.write(chunk, 0, Math.min(read, remaining));
-                        }
-                        if (read > remaining) {
-                            truncated = true;
-                        }
+                        append(chunk, read);
                     }
                 } catch (IOException ignored) {
-                    truncated = true;
+                    markTruncated();
                 }
             }, threadName);
             thread.setDaemon(true);
@@ -215,19 +210,47 @@ final class ChangedFileDetector {
         }
 
         private byte[] bytes() {
-            return buffer.toByteArray();
+            synchronized (lock) {
+                return buffer.toByteArray();
+            }
         }
 
         private boolean isTruncated() {
-            return truncated;
+            synchronized (lock) {
+                return truncated;
+            }
         }
 
         private String text() {
-            String text = new String(bytes(), StandardCharsets.UTF_8).trim();
-            if (text.isEmpty()) {
-                return truncated ? "[output truncated]" : "";
+            byte[] capturedBytes;
+            boolean wasTruncated;
+            synchronized (lock) {
+                capturedBytes = buffer.toByteArray();
+                wasTruncated = truncated;
             }
-            return truncated ? text + " [output truncated]" : text;
+            String text = new String(capturedBytes, StandardCharsets.UTF_8).trim();
+            if (text.isEmpty()) {
+                return wasTruncated ? "[output truncated]" : "";
+            }
+            return wasTruncated ? text + " [output truncated]" : text;
+        }
+
+        private void append(byte[] chunk, int read) {
+            synchronized (lock) {
+                int remaining = MAX_CAPTURED_OUTPUT_BYTES - buffer.size();
+                if (remaining > 0) {
+                    buffer.write(chunk, 0, Math.min(read, remaining));
+                }
+                if (read > remaining) {
+                    truncated = true;
+                }
+            }
+        }
+
+        private void markTruncated() {
+            synchronized (lock) {
+                truncated = true;
+            }
         }
     }
 }
