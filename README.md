@@ -134,6 +134,7 @@ cognitiveJava {
     output.set(layout.buildDirectory.file("reports/cognitive-java/report.json"))
     junit.set(true)
     junitReport.set(layout.buildDirectory.file("reports/cognitive-java/TEST-cognitive-java.xml"))
+    sourceRoots.set(listOf("module-a/src/main/java", "module-b/src/main/java"))
     excludes.set(listOf("generated/**"))
     excludeClasses.set(listOf("(^|.*\\.)Dagger[^.]*$"))
     excludeAnnotations.set(listOf("Generated"))
@@ -171,6 +172,10 @@ Bind the `check` goal:
         <output>target/cognitive-java/report.txt</output>
         <junit>true</junit>
         <junitReport>target/cognitive-java/TEST-cognitive-java.xml</junitReport>
+        <sourceRoots>
+          <sourceRoot>module-a/src/main/java</sourceRoot>
+          <sourceRoot>module-b/src/main/java</sourceRoot>
+        </sourceRoots>
         <excludes>
           <exclude>generated/**</exclude>
         </excludes>
