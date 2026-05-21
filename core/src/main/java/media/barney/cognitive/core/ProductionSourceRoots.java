@@ -13,13 +13,14 @@ final class ProductionSourceRoots {
 
     static boolean isProductionSourceRoot(Path directory) {
         Path normalized = directory.normalize();
-        int startIndex = normalized.getNameCount() - PRODUCTION_SOURCE_ROOT.getNameCount();
+        int startIndex = lastProductionSourceRootStartIndex(normalized);
         return startIndex >= 0 && matchesProductionSourceRoot(normalized, startIndex);
     }
 
     static boolean isUnderProductionSourceRoot(Path path) {
         Path normalized = path.normalize();
-        for (int index = 0; index <= normalized.getNameCount() - PRODUCTION_SOURCE_ROOT.getNameCount(); index++) {
+        int lastStartIndex = lastProductionSourceRootStartIndex(normalized);
+        for (int index = 0; index <= lastStartIndex; index++) {
             if (matchesProductionSourceRoot(normalized, index)) {
                 return true;
             }
@@ -39,5 +40,9 @@ final class ProductionSourceRoots {
             }
         }
         return true;
+    }
+
+    private static int lastProductionSourceRootStartIndex(Path path) {
+        return path.getNameCount() - PRODUCTION_SOURCE_ROOT.getNameCount();
     }
 }

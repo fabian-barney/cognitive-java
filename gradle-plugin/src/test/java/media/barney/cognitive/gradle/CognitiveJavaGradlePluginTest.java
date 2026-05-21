@@ -56,6 +56,7 @@ class CognitiveJavaGradlePluginTest {
         assertTrue(extension.getJunitReport().get().getAsFile().toPath().normalize().toString()
                 .replace('\\', '/')
                 .endsWith("build/reports/cognitive-java/TEST-cognitive-java.xml"));
+        assertEquals(List.of(), extension.getSourceRoots().get());
         assertEquals(List.of(), extension.getExcludes().get());
         assertEquals(List.of(), extension.getExcludeClasses().get());
         assertEquals(List.of(), extension.getExcludeAnnotations().get());
@@ -71,6 +72,7 @@ class CognitiveJavaGradlePluginTest {
                 .replace('\\', '/')
                 .endsWith("build/reports/cognitive-java/TEST-cognitive-java.xml"));
         assertTrue(checkTask.getJunitReportOutput().isPresent());
+        assertEquals(List.of(), checkTask.getSourceRoots().get());
         assertEquals(List.of(), checkTask.getExcludes().get());
         assertEquals(List.of(), checkTask.getExcludeClasses().get());
         assertEquals(List.of(), checkTask.getExcludeAnnotations().get());
@@ -99,6 +101,7 @@ class CognitiveJavaGradlePluginTest {
         extension.getOutput().fileValue(output.toFile());
         extension.getJunit().set(false);
         extension.getJunitReport().fileValue(junitReport.toFile());
+        extension.getSourceRoots().set(List.of("src/custom/java"));
         extension.getExcludes().set(List.of("module-a/**"));
         extension.getExcludeClasses().set(List.of(".*MapperImpl$"));
         extension.getExcludeAnnotations().set(List.of("Generated"));
@@ -115,6 +118,7 @@ class CognitiveJavaGradlePluginTest {
         assertEquals(output.normalize(), checkTask.getOutput().get().getAsFile().toPath().normalize());
         assertFalse(checkTask.getJunit().get());
         assertEquals(junitReport.normalize(), checkTask.getJunitReport().get().getAsFile().toPath().normalize());
+        assertEquals(List.of("src/custom/java"), checkTask.getSourceRoots().get());
         assertEquals(List.of("module-a/**"), checkTask.getExcludes().get());
         assertEquals(List.of(".*MapperImpl$"), checkTask.getExcludeClasses().get());
         assertEquals(List.of("Generated"), checkTask.getExcludeAnnotations().get());
@@ -140,6 +144,7 @@ class CognitiveJavaGradlePluginTest {
                 .replace('\\', '/')
                 .endsWith("build/reports/cognitive-java/custom-cognitive-java-check/TEST-cognitive-java.xml"));
         assertTrue(checkTask.getJunitReportOutput().isPresent());
+        assertEquals(List.of(), checkTask.getSourceRoots().get());
         assertEquals(List.of(), checkTask.getExcludes().get());
         assertEquals(List.of(), checkTask.getExcludeClasses().get());
         assertEquals(List.of(), checkTask.getExcludeAnnotations().get());
@@ -234,6 +239,7 @@ class CognitiveJavaGradlePluginTest {
         checkTask.getOutput().fileValue(output.toFile());
         checkTask.getJunit().set(false);
         checkTask.getJunitReport().fileValue(junitReport.toFile());
+        checkTask.getSourceRoots().set(List.of("src/custom/java"));
         checkTask.getExcludes().set(List.of("task/**"));
         checkTask.getExcludeClasses().set(List.of("demo.Generated"));
         checkTask.getExcludeAnnotations().set(List.of("Generated"));
@@ -247,6 +253,7 @@ class CognitiveJavaGradlePluginTest {
         assertEquals(output.normalize(), checkTask.getOutput().get().getAsFile().toPath().normalize());
         assertFalse(checkTask.getJunit().get());
         assertEquals(junitReport.normalize(), checkTask.getJunitReport().get().getAsFile().toPath().normalize());
+        assertEquals(List.of("src/custom/java"), checkTask.getSourceRoots().get());
         assertEquals(List.of("task/**"), checkTask.getExcludes().get());
         assertEquals(List.of("demo.Generated"), checkTask.getExcludeClasses().get());
         assertEquals(List.of("Generated"), checkTask.getExcludeAnnotations().get());
@@ -269,6 +276,96 @@ class CognitiveJavaGradlePluginTest {
         assertTrue(Files.exists(junitReport));
         assertTrue(Files.readString(junitReport).contains("<testsuites tests=\"1\" failures=\"0\" errors=\"0\" skipped=\"0\""));
         assertTrue(Files.exists(executionMarkerPath(task)));
+    }
+
+    @Test
+    void runCheckUsesConfiguredSourceRoots() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        Project project = ProjectBuilder.builder().withProjectDir(projectRoot.toFile()).build();
+        Path customRoot = projectRoot.resolve("src/custom/java/demo");
+        Files.createDirectories(customRoot);
+        Files.writeString(customRoot.resolve("Sample.java"), """
+                package demo;
+
+                class Sample {
+                    int alpha(boolean value) {
+                        if (value) {
+                            return 1;
+                        }
+                        return 0;
+                    }
+                }
+                """);
+
+        CognitiveJavaCheckTask task = project.getTasks().register("cognitive-java-check", CognitiveJavaCheckTask.class).get();
+        task.getAnalysisRoot().fileValue(projectRoot.toFile());
+        task.getSourceRoots().set(List.of("src/custom/java"));
+
+        task.runCheck();
+
+        Path junitReport = projectRoot.resolve("build/reports/cognitive-java/TEST-cognitive-java.xml");
+        assertTrue(Files.exists(junitReport));
+        assertTrue(Files.readString(junitReport).contains("src/custom/java/demo/Sample.java"));
+    }
+
+    @Test
+    void configuredSourceRootInputsTrackResolvedDirectories() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        Project project = ProjectBuilder.builder().withProjectDir(projectRoot.toFile()).build();
+        Path customRoot = projectRoot.resolve("src/custom/java/demo");
+        Files.createDirectories(customRoot);
+        Files.writeString(customRoot.resolve("Sample.java"), sampleSource());
+
+        CognitiveJavaCheckTask task = project.getTasks().register("cognitive-java-check", CognitiveJavaCheckTask.class).get();
+        task.getAnalysisRoot().fileValue(projectRoot.toFile());
+        task.getSourceRoots().set(List.of("src/custom/java"));
+
+        assertEquals(
+                List.of(projectRoot.resolve("src/custom/java").toAbsolutePath().normalize()),
+                task.getConfiguredSourceRootInputs().get().stream()
+                        .map(file -> file.toPath().toAbsolutePath().normalize())
+                        .toList()
+        );
+    }
+
+    @Test
+    void runCheckRejectsConfiguredSourceRootsOutsideAnalysisRootWithConfiguredValue() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        task.getSourceRoots().set(List.of("../outside"));
+
+        GradleException exception = assertThrows(GradleException.class, task::runCheck);
+
+        assertTrue(exception.getMessage().contains("../outside"));
+    }
+
+    @Test
+    void runCheckRejectsMissingConfiguredSourceRootsWithResolvedPath() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        task.getSourceRoots().set(List.of("src/missing/java"));
+
+        GradleException exception = assertThrows(GradleException.class, task::runCheck);
+
+        assertTrue(exception.getMessage().contains("src/missing/java"));
+        assertTrue(exception.getMessage().contains(
+                projectRoot.resolve("src/missing/java").toAbsolutePath().normalize().toString()
+        ));
+    }
+
+    @Test
+    void runCheckRejectsConfiguredSymlinkSourceRoots() throws Exception {
+        assumeTrue(!isWindows(), "This symlink test requires filesystem symlinks");
+        Path projectRoot = tempDir.toRealPath();
+        Path realSourceRoot = projectRoot.resolve("src/custom/java");
+        Files.createDirectories(realSourceRoot);
+        Path linkedSourceRoot = Files.createSymbolicLink(projectRoot.resolve("linked-source-root"), realSourceRoot);
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        task.getSourceRoots().set(List.of(linkedSourceRoot.getFileName().toString()));
+
+        GradleException exception = assertThrows(GradleException.class, task::runCheck);
+
+        assertTrue(exception.getMessage().contains("must not point to or traverse a symlink"));
     }
 
     @Test

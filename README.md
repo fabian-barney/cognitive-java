@@ -33,6 +33,7 @@ Usage:
 --agent
 --failures-only[=true|false]
 --omit-redundancy[=true|false]
+--source-root <path>                 Repeatable source-root selection
 --exclude <glob>                     Repeatable path exclusion
 --exclude-class <regex>              Repeatable FQCN exclusion
 --exclude-annotation <name>          Repeatable annotation exclusion
@@ -84,6 +85,16 @@ Built-in exclusions stay conservative and generated-code-focused:
 
 Full JSON, text, and JUnit outputs include exclusion audit counts. Compact agent-mode primary reports stay focused on actionable failures.
 
+Additional source selection and exclusion controls:
+
+- `--source-root <path>` repeatable
+- `--exclude <glob>` repeatable
+- `--exclude-class <regex>` repeatable
+- `--exclude-annotation <name>` repeatable
+- `--use-default-exclusions[=true|false]`
+
+Custom source roots are resolved against the analysis root. Directory traversal does not follow symlinks.
+
 ## Gradle Plugin
 
 Published plugin:
@@ -105,7 +116,13 @@ Run:
 ./gradlew cognitive-java-check
 ```
 
-Configure report controls, threshold, and exclusions:
+Gradle configuration also supports:
+
+- `sourceRoots`
+- `excludes`
+- `excludeClasses`
+- `excludeAnnotations`
+- `useDefaultExclusions`
 
 ```kotlin
 cognitiveJava {
@@ -117,6 +134,7 @@ cognitiveJava {
     output.set(layout.buildDirectory.file("reports/cognitive-java/report.json"))
     junit.set(true)
     junitReport.set(layout.buildDirectory.file("reports/cognitive-java/TEST-cognitive-java.xml"))
+    sourceRoots.set(listOf("module-a/src/main/java", "module-b/src/main/java"))
     excludes.set(listOf("generated/**"))
     excludeClasses.set(listOf("(^|.*\\.)Dagger[^.]*$"))
     excludeAnnotations.set(listOf("Generated"))
@@ -154,6 +172,10 @@ Bind the `check` goal:
         <output>target/cognitive-java/report.txt</output>
         <junit>true</junit>
         <junitReport>target/cognitive-java/TEST-cognitive-java.xml</junitReport>
+        <sourceRoots>
+          <sourceRoot>module-a/src/main/java</sourceRoot>
+          <sourceRoot>module-b/src/main/java</sourceRoot>
+        </sourceRoots>
         <excludes>
           <exclude>generated/**</exclude>
         </excludes>
@@ -179,6 +201,7 @@ Equivalent properties are available:
 - `cognitiveJava.junit`
 - `cognitiveJava.junitReport`
 - `cognitiveJava.threshold`
+- `cognitiveJava.sourceRoots`
 - `cognitiveJava.excludes`
 - `cognitiveJava.excludeClasses`
 - `cognitiveJava.excludeAnnotations`

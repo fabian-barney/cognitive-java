@@ -35,6 +35,7 @@ public final class Main {
                   --agent
                   --failures-only[=true|false]
                   --omit-redundancy[=true|false]
+                  --source-root <path>
                   --exclude <glob>
                   --exclude-class <regex>
                   --exclude-annotation <name>

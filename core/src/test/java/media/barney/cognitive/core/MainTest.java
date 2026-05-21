@@ -27,6 +27,7 @@ class MainTest {
         assertEquals(0, exit);
         assertTrue(utf8(out).contains("Usage:"));
         assertTrue(utf8(out).contains("cognitive-java --changed"));
+        assertTrue(utf8(out).contains("--source-root <path>"));
         assertTrue(utf8(out).contains("Exit codes:"));
     }
 

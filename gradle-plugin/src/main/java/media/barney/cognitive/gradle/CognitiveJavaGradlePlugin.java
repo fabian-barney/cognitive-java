@@ -22,6 +22,7 @@ public class CognitiveJavaGradlePlugin implements Plugin<Project> {
         extension.getJunit().convention(true);
         extension.getJunitReport().convention(project.getLayout().getBuildDirectory()
                 .file("reports/cognitive-java/TEST-cognitive-java.xml"));
+        extension.getSourceRoots().convention(List.of());
         extension.getExcludes().convention(List.of());
         extension.getExcludeClasses().convention(List.of());
         extension.getExcludeAnnotations().convention(List.of());
@@ -44,6 +45,7 @@ public class CognitiveJavaGradlePlugin implements Plugin<Project> {
                     task.getOutput().convention(extension.getOutput());
                     task.getJunit().convention(extension.getJunit());
                     task.getJunitReport().convention(extension.getJunitReport());
+                    task.getSourceRoots().convention(extension.getSourceRoots());
                     task.getExcludes().convention(extension.getExcludes());
                     task.getExcludeClasses().convention(extension.getExcludeClasses());
                     task.getExcludeAnnotations().convention(extension.getExcludeAnnotations());

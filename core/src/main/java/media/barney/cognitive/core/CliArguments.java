@@ -13,6 +13,7 @@ record CliArguments(
         @Nullable String outputPath,
         @Nullable String junitReportPath,
         List<String> fileArgs,
+        List<String> sourceRoots,
         SourceExclusionOptions exclusionOptions
 ) {
 }

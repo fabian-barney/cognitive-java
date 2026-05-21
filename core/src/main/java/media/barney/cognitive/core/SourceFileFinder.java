@@ -1,14 +1,14 @@
 package media.barney.cognitive.core;
 
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 final class SourceFileFinder {
 
@@ -19,34 +19,47 @@ final class SourceFileFinder {
         if (!Files.isDirectory(projectRoot)) {
             return List.of();
         }
-
-        List<Path> javaFiles = new ArrayList<>();
-        for (Path sourceRoot : productionSourceRoots(projectRoot)) {
-            try (var stream = Files.walk(sourceRoot)) {
-                stream.filter(Files::isRegularFile)
-                        .filter(path -> path.toString().endsWith(".java"))
-                        .forEach(javaFiles::add);
-            }
-        }
-        javaFiles.sort(Comparator.naturalOrder());
-        return javaFiles;
+        return findAllJavaFiles(AnalysisSourceRoots.discoverDefaultSourceRoots(projectRoot));
     }
 
-    private static List<Path> productionSourceRoots(Path projectRoot) throws IOException {
-        List<Path> sourceRoots = new ArrayList<>();
-        Files.walkFileTree(projectRoot, new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                if (!dir.equals(projectRoot) && ProductionSourceRoots.isSkippableDirectory(dir)) {
-                    return FileVisitResult.SKIP_SUBTREE;
-                }
-                if (ProductionSourceRoots.isProductionSourceRoot(dir)) {
-                    sourceRoots.add(dir.normalize());
-                    return FileVisitResult.SKIP_SUBTREE;
-                }
-                return FileVisitResult.CONTINUE;
-            }
-        });
-        return sourceRoots;
+    static List<Path> findAllJavaFiles(List<Path> sourceRoots) throws IOException {
+        Set<Path> javaFiles = new LinkedHashSet<>();
+        for (Path sourceRoot : sourceRoots) {
+            javaFiles.addAll(findJavaFilesRecursively(sourceRoot));
+        }
+        return javaFiles.stream().sorted(Comparator.naturalOrder()).toList();
+    }
+
+    static List<Path> findJavaFilesUnderConfiguredDirectory(Path directory, List<Path> configuredSourceRoots) throws IOException {
+        Set<Path> javaFiles = new LinkedHashSet<>();
+        Path normalizedDirectory = directory.toAbsolutePath().normalize();
+        for (Path sourceRoot : configuredSourceRoots) {
+            addConfiguredDirectoryMatches(javaFiles, normalizedDirectory, sourceRoot);
+        }
+        return javaFiles.stream().sorted(Comparator.naturalOrder()).toList();
+    }
+
+    private static void addConfiguredDirectoryMatches(Set<Path> javaFiles, Path directory, Path sourceRoot) throws IOException {
+        if (sourceRoot.startsWith(directory)) {
+            javaFiles.addAll(findJavaFilesRecursively(sourceRoot));
+            return;
+        }
+        if (directory.startsWith(sourceRoot)) {
+            javaFiles.addAll(findJavaFilesRecursively(directory));
+        }
+    }
+
+    private static List<Path> findJavaFilesRecursively(Path sourceRoot) throws IOException {
+        if (!Files.isDirectory(sourceRoot, LinkOption.NOFOLLOW_LINKS)) {
+            return List.of();
+        }
+        List<Path> javaFiles = new ArrayList<>();
+        try (var stream = Files.walk(sourceRoot)) {
+            stream.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .map(path -> path.toAbsolutePath().normalize())
+                    .forEach(javaFiles::add);
+        }
+        return javaFiles;
     }
 }

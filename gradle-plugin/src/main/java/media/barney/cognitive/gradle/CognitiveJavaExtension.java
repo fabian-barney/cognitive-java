@@ -22,6 +22,8 @@ public abstract class CognitiveJavaExtension {
 
     public abstract RegularFileProperty getJunitReport();
 
+    public abstract ListProperty<String> getSourceRoots();
+
     public abstract ListProperty<String> getExcludes();
 
     public abstract ListProperty<String> getExcludeClasses();

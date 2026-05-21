@@ -35,6 +35,7 @@ final class CliArgumentsParser {
                 state.outputPath,
                 state.junitReportPath,
                 fileArgs,
+                List.copyOf(state.sourceRoots),
                 state.exclusionOptions
         );
     }
@@ -140,6 +141,10 @@ final class CliArgumentsParser {
                                                 AssignedOption option) {
         if ("--exclude".equals(option.name())) {
             state.excludes.add(parseListOption(args, index, option, "a glob"));
+            return true;
+        }
+        if ("--source-root".equals(option.name())) {
+            state.sourceRoots.add(parseListOption(args, index, option, "a path"));
             return true;
         }
         if ("--exclude-class".equals(option.name())) {
@@ -270,6 +275,7 @@ final class CliArgumentsParser {
                               boolean omitRedundancy,
                               @Nullable String outputPath,
                               @Nullable String junitReportPath,
+                              List<String> sourceRoots,
                               SourceExclusionOptions exclusionOptions,
                               List<String> fileArgs) {
     }
@@ -292,6 +298,7 @@ final class CliArgumentsParser {
         private boolean useDefaultExclusions = true;
         private boolean useDefaultExclusionsSeen;
         private final List<String> excludes = new ArrayList<>();
+        private final List<String> sourceRoots = new ArrayList<>();
         private final List<String> excludeClasses = new ArrayList<>();
         private final List<String> excludeAnnotations = new ArrayList<>();
         private @Nullable String outputPath;
@@ -313,6 +320,7 @@ final class CliArgumentsParser {
                     effectiveOmitRedundancy,
                     outputPath,
                     junitReportPath,
+                    List.copyOf(sourceRoots),
                     new SourceExclusionOptions(excludes, excludeClasses, excludeAnnotations, useDefaultExclusions),
                     List.copyOf(values)
             );

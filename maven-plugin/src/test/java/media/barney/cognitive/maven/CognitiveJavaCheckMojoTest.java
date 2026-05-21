@@ -154,6 +154,35 @@ class CognitiveJavaCheckMojoTest {
     }
 
     @Test
+    void usesConfiguredSourceRoots() throws Exception {
+        Path root = tempDir.resolve("root");
+        Files.createDirectories(root.resolve("src/custom/java"));
+        Files.createDirectories(root.resolve("module-a/generated/java"));
+
+        RecordingRunner runner = new RecordingRunner();
+        CognitiveJavaCheckMojo mojo = mojo(runner);
+        setField(mojo, "session", session(List.of(project(root, "root")), root));
+        setField(mojo, "project", project(root, "root"));
+        setField(mojo, "sourceRootsProperty", "src/custom/java");
+        setField(mojo, "sourceRoots", List.of("module-a/generated/java"));
+
+        mojo.execute();
+
+        assertEquals(List.of(
+                "--format",
+                "none",
+                "--source-root",
+                "src/custom/java",
+                "--source-root",
+                "module-a/generated/java",
+                "--threshold",
+                "15",
+                "--junit-report",
+                root.resolve("target/cognitive-java/TEST-cognitive-java.xml").toString()
+        ), List.of(runner.args));
+    }
+
+    @Test
     void disablesJunitReport() throws Exception {
         Path root = tempDir.resolve("root");
         Files.createDirectories(root);

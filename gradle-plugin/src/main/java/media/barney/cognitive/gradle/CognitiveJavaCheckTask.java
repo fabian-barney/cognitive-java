@@ -28,6 +28,7 @@ import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -37,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
@@ -103,6 +105,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         getOmitRedundancy().convention(getAgent());
         getJunit().convention(true);
         getJunitReport().convention(defaultJunitReport);
+        getSourceRoots().convention(List.of());
         getExcludes().convention(List.of());
         getExcludeClasses().convention(List.of());
         getExcludeAnnotations().convention(List.of());
@@ -153,6 +156,18 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     public abstract RegularFileProperty getJunitReport();
 
     @Input
+    public abstract ListProperty<String> getSourceRoots();
+
+    @InputFiles
+    @Optional
+    @PathSensitive(PathSensitivity.RELATIVE)
+    public Provider<List<File>> getConfiguredSourceRootInputs() {
+        return getSourceRoots().map(sourceRoots -> resolvedConfiguredSourceRoots(sourceRoots).stream()
+                .map(Path::toFile)
+                .toList());
+    }
+
+    @Input
     public abstract ListProperty<String> getExcludes();
 
     @Input
@@ -190,11 +205,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         Path configuredOutputPath = outputPath();
         Path configuredJunitReportPath = junitReportPath();
         validateReportOptions(configuredOutputPath, configuredJunitReportPath);
-        List<String> sourceArguments = getAnalysisSources().getFiles().stream()
-                .map(file -> getAnalysisRoot().get().getAsFile().toPath().toAbsolutePath().normalize()
-                        .relativize(file.toPath().toAbsolutePath().normalize()).toString().replace('\\', '/'))
-                .sorted(Comparator.naturalOrder())
-                .toList();
+        List<String> sourceArguments = sourceArguments();
         if (sourceArguments.isEmpty()) {
             runWithoutSourcesWithReportStateLock();
             writeExecutionMarker();
@@ -285,6 +296,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         }
         arguments.add("--failures-only=" + getFailuresOnly().get());
         arguments.add("--omit-redundancy=" + getOmitRedundancy().get());
+        addRepeated(arguments, "--source-root", getSourceRoots().get());
         addRepeated(arguments, "--exclude", getExcludes().get());
         addRepeated(arguments, "--exclude-class", getExcludeClasses().get());
         addRepeated(arguments, "--exclude-annotation", getExcludeAnnotations().get());
@@ -307,6 +319,119 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         for (String value : values) {
             arguments.add(option);
             arguments.add(value);
+        }
+    }
+
+    private List<String> sourceArguments() {
+        Path analysisRoot = analysisRootPath();
+        return selectedSourceFiles().stream()
+                .map(file -> analysisRoot.relativize(file).toString().replace('\\', '/'))
+                .sorted(Comparator.naturalOrder())
+                .toList();
+    }
+
+    private List<Path> selectedSourceFiles() {
+        List<String> configuredSourceRoots = getSourceRoots().get();
+        if (configuredSourceRoots.isEmpty()) {
+            return getAnalysisSources().getFiles().stream()
+                    .map(file -> file.toPath().toAbsolutePath().normalize())
+                    .sorted(Comparator.naturalOrder())
+                    .toList();
+        }
+        return configuredSourceRootJavaFiles(configuredSourceRoots);
+    }
+
+    private List<Path> configuredSourceRootJavaFiles(List<String> configuredSourceRoots) {
+        LinkedHashSet<Path> javaFiles = new LinkedHashSet<>();
+        for (Path sourceRoot : resolvedConfiguredSourceRoots(configuredSourceRoots)) {
+            javaFiles.addAll(javaFilesUnder(sourceRoot));
+        }
+        return javaFiles.stream().sorted(Comparator.naturalOrder()).toList();
+    }
+
+    private List<Path> resolvedConfiguredSourceRoots(List<String> configuredSourceRoots) {
+        Path analysisRoot = analysisRootPath();
+        LinkedHashSet<Path> sourceRoots = new LinkedHashSet<>();
+        for (String configuredSourceRoot : configuredSourceRoots) {
+            sourceRoots.add(resolveSourceRoot(analysisRoot, configuredSourceRoot));
+        }
+        return sourceRoots.stream().sorted(Comparator.naturalOrder()).toList();
+    }
+
+    private Path resolveSourceRoot(Path analysisRoot, String configuredSourceRoot) {
+        String trimmed = configuredSourceRoot.trim();
+        if (trimmed.isEmpty()) {
+            throw new GradleException("sourceRoots entries must not be blank");
+        }
+        Path candidate = Path.of(trimmed);
+        Path resolved = candidate.isAbsolute()
+                ? candidate.toAbsolutePath().normalize()
+                : analysisRoot.resolve(candidate).normalize();
+        validateSourceRootInsideAnalysisRoot(analysisRoot, configuredSourceRoot, resolved);
+        validateSourceRootHasNoSymlinks(analysisRoot, configuredSourceRoot, resolved);
+        validateSourceRootDirectory(configuredSourceRoot, resolved);
+        validateSourceRootRealPath(analysisRoot, configuredSourceRoot, resolved);
+        return resolved;
+    }
+
+    private List<Path> javaFilesUnder(Path sourceRoot) {
+        if (!Files.isDirectory(sourceRoot, LinkOption.NOFOLLOW_LINKS)) {
+            return List.of();
+        }
+        try (Stream<Path> stream = Files.walk(sourceRoot)) {
+            return stream.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .map(path -> path.toAbsolutePath().normalize())
+                    .toList();
+        } catch (IOException exception) {
+            throw new GradleException("Failed to read source root: " + sourceRoot, exception);
+        }
+    }
+
+    private void validateSourceRootInsideAnalysisRoot(Path analysisRoot, String configuredSourceRoot, Path resolved) {
+        if (!resolved.startsWith(analysisRoot)) {
+            throw new GradleException("sourceRoots entry '" + configuredSourceRoot
+                    + "' must stay inside the analysisRoot: " + resolved);
+        }
+    }
+
+    private void validateSourceRootHasNoSymlinks(Path analysisRoot, String configuredSourceRoot, Path resolved) {
+        if (containsSymbolicLink(analysisRoot, resolved)) {
+            throw new GradleException("sourceRoots entry '" + configuredSourceRoot
+                    + "' must not point to or traverse a symlink: " + resolved);
+        }
+    }
+
+    private void validateSourceRootDirectory(String configuredSourceRoot, Path resolved) {
+        if (!Files.isDirectory(resolved, LinkOption.NOFOLLOW_LINKS)) {
+            throw new GradleException("sourceRoots entry '" + configuredSourceRoot
+                    + "' must point to an existing directory: " + resolved);
+        }
+    }
+
+    private void validateSourceRootRealPath(Path analysisRoot, String configuredSourceRoot, Path resolved) {
+        try {
+            if (!resolved.toRealPath().startsWith(analysisRoot.toRealPath())) {
+                throw new GradleException("sourceRoots entry '" + configuredSourceRoot
+                        + "' must stay inside the analysisRoot: " + resolved);
+            }
+        } catch (IOException exception) {
+            throw new GradleException("Failed to validate sourceRoots entry '" + configuredSourceRoot + "'", exception);
+        }
+    }
+
+    private boolean containsSymbolicLink(Path root, Path path) {
+        Path current = root;
+        try {
+            for (Path segment : root.relativize(path)) {
+                current = current.resolve(segment);
+                if (Files.isSymbolicLink(current)) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (IllegalArgumentException exception) {
+            return true;
         }
     }
 

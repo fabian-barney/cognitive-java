@@ -282,6 +282,145 @@ class CliApplicationTest {
     }
 
     @Test
+    void customSourceRootsEnableNonStandardDiscovery() throws Exception {
+        Path sourceRoot = tempDir.resolve("src/custom/java/demo");
+        Files.createDirectories(sourceRoot);
+        Files.writeString(sourceRoot.resolve("Sample.java"), """
+                package demo;
+
+                class Sample {
+                    int alpha(boolean value) {
+                        if (value) {
+                            return 1;
+                        }
+                        return 0;
+                    }
+                }
+                """);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
+                .execute(new String[]{"--format", "text", "--source-root", "src/custom/java"});
+
+        assertEquals(0, exit);
+        assertTrue(utf8(out).contains("src/custom/java/demo/Sample.java"));
+        assertEquals("", utf8(err));
+    }
+
+    @Test
+    void changedModeUsesConfiguredSourceRoots() throws Exception {
+        Path sourceRoot = tempDir.resolve("src/custom/java/demo");
+        Files.createDirectories(sourceRoot);
+        Path source = sourceRoot.resolve("Sample.java");
+        Files.writeString(source, """
+                package demo;
+
+                class Sample {
+                    int alpha() {
+                        return 1;
+                    }
+                }
+                """);
+
+        runGit("init");
+        runGit("config", "user.name", "Test User");
+        runGit("config", "user.email", "test@example.com");
+        runGit("add", ".");
+        runGit("commit", "-m", "init");
+
+        Files.writeString(source, """
+                package demo;
+
+                class Sample {
+                    int alpha(boolean value) {
+                        if (value) {
+                            return 1;
+                        }
+                        return 0;
+                    }
+                }
+                """);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
+                .execute(new String[]{"--format", "text", "--changed", "--source-root", "src/custom/java"});
+
+        assertEquals(0, exit);
+        assertTrue(utf8(out).contains("src/custom/java/demo/Sample.java"));
+        assertEquals("", utf8(err));
+    }
+
+    @Test
+    void invalidConfiguredSourceRootReturnsExitOne() throws Exception {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
+                .execute(new String[]{"--format", "text", "--source-root", "../outside"});
+
+        assertEquals(1, exit);
+        assertTrue(utf8(err).contains("--source-root must stay inside the analysis root"));
+        assertFalse(utf8(out).contains("Cognitive Complexity Report"));
+    }
+
+    @Test
+    void explicitFileMustStayInsideConfiguredSourceRoots() throws Exception {
+        Path defaultRoot = tempDir.resolve("src/main/java/demo");
+        Files.createDirectories(defaultRoot);
+        Files.writeString(defaultRoot.resolve("Outside.java"), """
+                package demo;
+
+                class Outside {
+                    int alpha() {
+                        return 1;
+                    }
+                }
+                """);
+        Path configuredRoot = tempDir.resolve("src/custom/java/demo");
+        Files.createDirectories(configuredRoot);
+        Files.writeString(configuredRoot.resolve("Inside.java"), """
+                package demo;
+
+                class Inside {
+                    int beta() {
+                        return 1;
+                    }
+                }
+                """);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
+                .execute(new String[]{
+                        "--format", "text",
+                        "--source-root", "src/custom/java",
+                        "src/main/java/demo/Outside.java"
+                });
+
+        assertEquals(1, exit);
+        assertTrue(utf8(err).contains("Explicit file must stay inside the configured source roots"));
+        assertFalse(utf8(out).contains("Cognitive Complexity Report"));
+    }
+
+    @Test
+    void explicitPathMustStayInsideAnalysisRoot() throws Exception {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
+                .execute(new String[]{"../outside/src/main/java/demo/Sample.java"});
+
+        assertEquals(1, exit);
+        assertTrue(utf8(err).contains("Path must stay inside the analysis root"));
+        assertFalse(utf8(out).contains("Cognitive Complexity Report"));
+    }
+
+    @Test
     void thresholdFailureUsesCognitiveComplexityLimitFifteen() throws Exception {
         Path sourceRoot = tempDir.resolve("src/main/java/demo");
         Files.createDirectories(sourceRoot);
