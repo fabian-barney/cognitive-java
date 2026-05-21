@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -49,5 +50,13 @@ class AnalysisSourceRootsTest {
                 () -> AnalysisSourceRoots.resolveConfiguredSourceRoots(tempDir, List.of("linked-parent/src/custom/java")));
 
         assertTrue(Objects.requireNonNull(error.getMessage()).contains("must not point to or traverse a symlink"));
+    }
+
+    @Test
+    void rejectsBlankExplicitPathsWithExplicitPathMessage() throws Exception {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> AnalysisSourceRoots.resolveExplicitPath(tempDir, "   "));
+
+        assertEquals("Path must not be blank", error.getMessage());
     }
 }

@@ -46,7 +46,7 @@ final class AnalysisSourceRoots {
         Path realAnalysisRoot = normalizedAnalysisRoot.toRealPath();
         Set<Path> resolvedRoots = new LinkedHashSet<>();
         for (String configuredSourceRoot : configuredSourceRoots) {
-            Path resolved = resolveConfiguredSourceRoot(normalizedAnalysisRoot, configuredSourceRoot);
+            Path resolved = resolvePath(normalizedAnalysisRoot, configuredSourceRoot, "--source-root requires a path");
             validateConfiguredSourceRoot(normalizedAnalysisRoot, realAnalysisRoot, configuredSourceRoot, resolved);
             resolvedRoots.add(resolved);
         }
@@ -56,7 +56,7 @@ final class AnalysisSourceRoots {
     static Path resolveExplicitPath(Path analysisRoot, String configuredPath) throws IOException {
         Path normalizedAnalysisRoot = analysisRoot.toAbsolutePath().normalize();
         Path realAnalysisRoot = normalizedAnalysisRoot.toRealPath();
-        Path resolved = resolveConfiguredSourceRoot(normalizedAnalysisRoot, configuredPath);
+        Path resolved = resolvePath(normalizedAnalysisRoot, configuredPath, "Path must not be blank");
         ensureInsideAnalysisRoot(normalizedAnalysisRoot, "Path", configuredPath, resolved);
         ensureExistingPath(configuredPath, resolved);
         ensureNoTraversedSymlink(normalizedAnalysisRoot, "Path", configuredPath, resolved);
@@ -64,10 +64,10 @@ final class AnalysisSourceRoots {
         return resolved;
     }
 
-    private static Path resolveConfiguredSourceRoot(Path normalizedAnalysisRoot, String configuredSourceRoot) {
-        String trimmed = configuredSourceRoot.trim();
+    private static Path resolvePath(Path normalizedAnalysisRoot, String configuredPath, String blankMessage) {
+        String trimmed = configuredPath.trim();
         if (trimmed.isEmpty()) {
-            throw new IllegalArgumentException("--source-root requires a path");
+            throw new IllegalArgumentException(blankMessage);
         }
         Path candidate = Path.of(trimmed);
         return candidate.isAbsolute()
