@@ -1,6 +1,7 @@
 package media.barney.cognitive.core;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import java.io.IOException;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -221,6 +222,17 @@ class ChangedFileDetectorTest {
     }
 
     @Test
+    void escapesNullBytesInCapturedGitOutput() {
+        IOException error = assertThrows(IOException.class,
+                () -> ChangedFileDetector.changedJavaFiles(tempDir,
+                        ignored -> new CompletedProcess(1, "bad\0output", "")));
+
+        String message = Objects.requireNonNull(error.getMessage());
+        assertTrue(message.contains("bad\\0output"));
+        assertFalse(message.contains("bad\0output"));
+    }
+
+    @Test
     void rejectsTruncatedGitStatusOutputOnSuccess() {
         String noisy = "?? src/main/java/demo/" + "x".repeat(ChangedFileDetectorTestSupport.OUTPUT_LENGTH) + ".java\0";
 
@@ -253,6 +265,21 @@ class ChangedFileDetectorTest {
         assertTrue(Objects.requireNonNull(error.getMessage()).contains("could not be terminated within"));
         assertTrue(process.stdoutClosed());
         assertTrue(process.stderrClosed());
+    }
+
+    @Test
+    void destroysAndClosesCaptureStreamsWhenInterrupted() {
+        InterruptedProcess process = new InterruptedProcess();
+
+        InterruptedException exception = assertThrows(InterruptedException.class,
+                () -> ChangedFileDetector.changedJavaFiles(tempDir, ignored -> process));
+
+        assertEquals("interrupted wait", exception.getMessage());
+        assertTrue(process.destroyed());
+        assertTrue(process.stdoutClosed());
+        assertTrue(process.stderrClosed());
+        assertTrue(Thread.currentThread().isInterrupted());
+        Thread.interrupted();
     }
 
     private static void run(Path dir, String... command) throws IOException, InterruptedException {
@@ -513,6 +540,71 @@ class ChangedFileDetectorTest {
 
         private boolean stderrClosed() {
             return stderr.closed();
+        }
+
+    }
+
+    private static final class InterruptedProcess extends Process {
+        private final BlockingInputStream stdout = new BlockingInputStream();
+        private final BlockingInputStream stderr = new BlockingInputStream();
+        private boolean destroyed;
+
+        @Override
+        public OutputStream getOutputStream() {
+            return OutputStream.nullOutputStream();
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            return stdout;
+        }
+
+        @Override
+        public InputStream getErrorStream() {
+            return stderr;
+        }
+
+        @Override
+        public int waitFor() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean waitFor(long timeout, java.util.concurrent.TimeUnit unit) throws InterruptedException {
+            throw new InterruptedException("interrupted wait");
+        }
+
+        @Override
+        public int exitValue() {
+            return 143;
+        }
+
+        @Override
+        public void destroy() {
+            destroyed = true;
+        }
+
+        @Override
+        public Process destroyForcibly() {
+            destroyed = true;
+            return this;
+        }
+
+        @Override
+        public boolean isAlive() {
+            return !destroyed;
+        }
+
+        private boolean stdoutClosed() {
+            return stdout.closed();
+        }
+
+        private boolean stderrClosed() {
+            return stderr.closed();
+        }
+
+        private boolean destroyed() {
+            return destroyed;
         }
     }
 
