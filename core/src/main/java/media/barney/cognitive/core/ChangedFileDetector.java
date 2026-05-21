@@ -105,8 +105,7 @@ final class ChangedFileDetector {
 
     private static void ensureCompleteStatusOutput(CapturedOutput stdout, CapturedOutput stderr) throws IOException {
         if (stdout.isTruncated()) {
-            throw new IOException("git status output exceeded " + MAX_CAPTURED_OUTPUT_BYTES
-                    + " bytes; refusing incomplete changed-file detection"
+            throw new IOException("could not fully capture git status output; refusing incomplete changed-file detection"
                     + formatCapturedOutput(stdout, stderr));
         }
     }

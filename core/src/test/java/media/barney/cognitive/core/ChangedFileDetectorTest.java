@@ -213,6 +213,17 @@ class ChangedFileDetectorTest {
         assertTrue(error.getMessage().contains("[output truncated]"));
     }
 
+    @Test
+    void rejectsUnreadableGitStatusOutputOnSuccess() {
+        IOException error = assertThrows(IOException.class,
+                () -> ChangedFileDetector.changedJavaFiles(tempDir,
+                        ignored -> new CompletedProcess(0, new FailingInputStream(), InputStream.nullInputStream())));
+
+        assertTrue(Objects.requireNonNull(error.getMessage()).contains("could not fully capture git status output"));
+        assertTrue(error.getMessage().contains("refusing incomplete changed-file detection"));
+        assertTrue(error.getMessage().contains("[output truncated]"));
+    }
+
     private static void run(Path dir, String... command) throws IOException, InterruptedException {
         Process process = new ProcessBuilder(command)
                 .directory(dir.toFile())
@@ -356,14 +367,20 @@ class ChangedFileDetectorTest {
     }
 
     private static final class CompletedProcess extends Process {
-        private final ByteArrayInputStream stdout;
-        private final ByteArrayInputStream stderr;
+        private final InputStream stdout;
+        private final InputStream stderr;
         private final int exitCode;
 
         private CompletedProcess(int exitCode, String stdout, String stderr) {
+            this(exitCode,
+                    new ByteArrayInputStream(stdout.getBytes(StandardCharsets.UTF_8)),
+                    new ByteArrayInputStream(stderr.getBytes(StandardCharsets.UTF_8)));
+        }
+
+        private CompletedProcess(int exitCode, InputStream stdout, InputStream stderr) {
             this.exitCode = exitCode;
-            this.stdout = new ByteArrayInputStream(stdout.getBytes(StandardCharsets.UTF_8));
-            this.stderr = new ByteArrayInputStream(stderr.getBytes(StandardCharsets.UTF_8));
+            this.stdout = stdout;
+            this.stderr = stderr;
         }
 
         @Override
@@ -408,6 +425,18 @@ class ChangedFileDetectorTest {
         @Override
         public boolean isAlive() {
             return false;
+        }
+    }
+
+    private static final class FailingInputStream extends InputStream {
+        @Override
+        public int read() throws IOException {
+            throw new IOException("boom");
+        }
+
+        @Override
+        public int read(byte[] buffer, int offset, int length) throws IOException {
+            throw new IOException("boom");
         }
     }
 
