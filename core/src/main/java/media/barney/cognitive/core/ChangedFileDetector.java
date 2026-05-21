@@ -3,6 +3,8 @@ package media.barney.cognitive.core;
 import java.io.IOException;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -41,6 +43,7 @@ final class ChangedFileDetector {
     static List<Path> changedJavaFilesUnderSourceRoots(Path projectRoot) throws IOException, InterruptedException {
         return changedJavaFiles(projectRoot).stream()
                 .filter(ProductionSourceRoots::isUnderProductionSourceRoot)
+                .filter(ChangedFileDetector::isRegularFileWithoutFollowingLinks)
                 .toList();
     }
 
@@ -48,6 +51,7 @@ final class ChangedFileDetector {
             throws IOException, InterruptedException {
         return changedJavaFiles(projectRoot).stream()
                 .filter(path -> AnalysisSourceRoots.isUnderAnySourceRoot(path, sourceRoots))
+                .filter(ChangedFileDetector::isRegularFileWithoutFollowingLinks)
                 .toList();
     }
 
@@ -141,6 +145,10 @@ final class ChangedFileDetector {
             }
         }
         return files;
+    }
+
+    private static boolean isRegularFileWithoutFollowingLinks(Path path) {
+        return Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS);
     }
 
     private static int nextNullIndex(byte[] output, int start) throws IOException {

@@ -8,11 +8,13 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.List;
 import java.util.Objects;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -141,6 +143,23 @@ class ChangedFileDetectorTest {
         Files.delete(tracked);
 
         List<Path> changed = ChangedFileDetector.changedJavaFilesUnderSourceRoots(tempDir);
+
+        assertEquals(List.of(), changed);
+    }
+
+    @Test
+    void ignoresSymlinkedChangedJavaFiles() throws Exception {
+        assumeTrue(!isWindows(), "This symlink test requires filesystem symlinks");
+
+        Path src = tempDir.resolve("src/main/java/demo");
+        Files.createDirectories(src);
+        Path target = tempDir.resolve("linked-target.java");
+        Files.writeString(target, "class LinkedTarget {}\n");
+        Path symlink = src.resolve("Linked.java");
+        Files.createSymbolicLink(symlink, target);
+
+        List<Path> changed = ChangedFileDetector.changedJavaFiles(tempDir,
+                ignored -> new ReadBeforeWaitProcess("?? src/main/java/demo/Linked.java\0"));
 
         assertEquals(List.of(), changed);
     }
@@ -551,5 +570,9 @@ class ChangedFileDetectorTest {
 
         private ChangedFileDetectorTestSupport() {
         }
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win");
     }
 }

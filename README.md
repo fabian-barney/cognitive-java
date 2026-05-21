@@ -33,6 +33,7 @@ Usage:
 --agent
 --failures-only[=true|false]
 --omit-redundancy[=true|false]
+--source-root <path>                 Repeatable source-root selection
 --exclude <glob>                     Repeatable path exclusion
 --exclude-class <regex>              Repeatable FQCN exclusion
 --exclude-annotation <name>          Repeatable annotation exclusion
