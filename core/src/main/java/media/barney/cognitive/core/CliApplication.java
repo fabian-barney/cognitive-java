@@ -3,6 +3,7 @@ package media.barney.cognitive.core;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -126,23 +127,32 @@ final class CliApplication {
                 : AnalysisSourceRoots.resolveConfiguredSourceRoots(projectRoot, sourceRoots);
         Set<Path> files = new LinkedHashSet<>();
         for (String arg : args) {
-            Path path = projectRoot.resolve(arg).normalize();
-            if (!Files.exists(path)) {
-                throw new IllegalArgumentException("Path does not exist: " + arg);
-            }
-            if (Files.isDirectory(path)) {
+            Path path = AnalysisSourceRoots.resolveExplicitPath(projectRoot, arg);
+            if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
                 if (configuredSourceRoots.isEmpty()) {
                     files.addAll(SourceFileFinder.findAllJavaFilesUnderSourceRoots(path));
                 } else {
                     files.addAll(SourceFileFinder.findJavaFilesUnderConfiguredDirectory(path, configuredSourceRoots));
                 }
             } else {
+                ensureExplicitFileInsideConfiguredSourceRoots(path, configuredSourceRoots, arg);
                 files.add(path.toAbsolutePath().normalize());
             }
         }
         List<Path> sorted = new ArrayList<>(files);
         sorted.sort(Comparator.naturalOrder());
         return sorted;
+    }
+
+    private static void ensureExplicitFileInsideConfiguredSourceRoots(
+            Path path,
+            List<Path> configuredSourceRoots,
+            String configuredPath
+    ) {
+        if (!configuredSourceRoots.isEmpty() && !AnalysisSourceRoots.isUnderAnySourceRoot(path, configuredSourceRoots)) {
+            throw new IllegalArgumentException("Explicit file must stay inside the configured source roots: "
+                    + configuredPath);
+        }
     }
 
     private static final class ParseOutcome {

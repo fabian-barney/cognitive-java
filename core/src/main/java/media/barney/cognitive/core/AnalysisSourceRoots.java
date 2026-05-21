@@ -53,6 +53,17 @@ final class AnalysisSourceRoots {
         return resolvedRoots.stream().sorted().toList();
     }
 
+    static Path resolveExplicitPath(Path analysisRoot, String configuredPath) throws IOException {
+        Path normalizedAnalysisRoot = analysisRoot.toAbsolutePath().normalize();
+        Path realAnalysisRoot = normalizedAnalysisRoot.toRealPath();
+        Path resolved = resolveConfiguredSourceRoot(normalizedAnalysisRoot, configuredPath);
+        ensureInsideAnalysisRoot(normalizedAnalysisRoot, "Path", configuredPath, resolved);
+        ensureExistingPath(configuredPath, resolved);
+        ensureNoTraversedSymlink(normalizedAnalysisRoot, "Path", configuredPath, resolved);
+        ensureRealPathInsideAnalysisRoot(realAnalysisRoot, "Path", configuredPath, resolved);
+        return resolved;
+    }
+
     private static Path resolveConfiguredSourceRoot(Path normalizedAnalysisRoot, String configuredSourceRoot) {
         String trimmed = configuredSourceRoot.trim();
         if (trimmed.isEmpty()) {
@@ -70,24 +81,40 @@ final class AnalysisSourceRoots {
             String configuredSourceRoot,
             Path resolved
     ) throws IOException {
-        ensureInsideAnalysisRoot(normalizedAnalysisRoot, configuredSourceRoot, resolved);
-        ensureNoTraversedSymlink(normalizedAnalysisRoot, configuredSourceRoot, resolved);
+        ensureInsideAnalysisRoot(normalizedAnalysisRoot, "--source-root", configuredSourceRoot, resolved);
+        ensureNoTraversedSymlink(normalizedAnalysisRoot, "--source-root", configuredSourceRoot, resolved);
         ensureExistingDirectory(configuredSourceRoot, resolved);
-        ensureRealPathInsideAnalysisRoot(realAnalysisRoot, configuredSourceRoot, resolved);
+        ensureRealPathInsideAnalysisRoot(realAnalysisRoot, "--source-root", configuredSourceRoot, resolved);
     }
 
-    private static void ensureInsideAnalysisRoot(Path normalizedAnalysisRoot, String configuredSourceRoot, Path resolved) {
+    private static void ensureInsideAnalysisRoot(
+            Path normalizedAnalysisRoot,
+            String pathLabel,
+            String configuredPath,
+            Path resolved
+    ) {
         if (!resolved.startsWith(normalizedAnalysisRoot)) {
-            throw new IllegalArgumentException("--source-root must stay inside the analysis root: "
-                    + configuredSourceRoot);
+            throw new IllegalArgumentException(pathLabel + " must stay inside the analysis root: "
+                    + configuredPath);
         }
     }
 
-    private static void ensureNoTraversedSymlink(Path normalizedAnalysisRoot, String configuredSourceRoot, Path resolved)
+    private static void ensureNoTraversedSymlink(
+            Path normalizedAnalysisRoot,
+            String pathLabel,
+            String configuredPath,
+            Path resolved
+    )
             throws IOException {
         if (containsSymbolicLink(normalizedAnalysisRoot, resolved)) {
-            throw new IllegalArgumentException("--source-root must not point to or traverse a symlink: "
-                    + configuredSourceRoot);
+            throw new IllegalArgumentException(pathLabel + " must not point to or traverse a symlink: "
+                    + configuredPath);
+        }
+    }
+
+    private static void ensureExistingPath(String configuredPath, Path resolved) {
+        if (!Files.exists(resolved, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IllegalArgumentException("Path does not exist: " + configuredPath);
         }
     }
 
@@ -98,11 +125,16 @@ final class AnalysisSourceRoots {
         }
     }
 
-    private static void ensureRealPathInsideAnalysisRoot(Path realAnalysisRoot, String configuredSourceRoot, Path resolved)
+    private static void ensureRealPathInsideAnalysisRoot(
+            Path realAnalysisRoot,
+            String pathLabel,
+            String configuredPath,
+            Path resolved
+    )
             throws IOException {
         if (!resolved.toRealPath().startsWith(realAnalysisRoot)) {
-            throw new IllegalArgumentException("--source-root must stay inside the analysis root: "
-                    + configuredSourceRoot);
+            throw new IllegalArgumentException(pathLabel + " must stay inside the analysis root: "
+                    + configuredPath);
         }
     }
 

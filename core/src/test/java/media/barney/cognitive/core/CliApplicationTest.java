@@ -368,6 +368,59 @@ class CliApplicationTest {
     }
 
     @Test
+    void explicitFileMustStayInsideConfiguredSourceRoots() throws Exception {
+        Path defaultRoot = tempDir.resolve("src/main/java/demo");
+        Files.createDirectories(defaultRoot);
+        Files.writeString(defaultRoot.resolve("Outside.java"), """
+                package demo;
+
+                class Outside {
+                    int alpha() {
+                        return 1;
+                    }
+                }
+                """);
+        Path configuredRoot = tempDir.resolve("src/custom/java/demo");
+        Files.createDirectories(configuredRoot);
+        Files.writeString(configuredRoot.resolve("Inside.java"), """
+                package demo;
+
+                class Inside {
+                    int beta() {
+                        return 1;
+                    }
+                }
+                """);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
+                .execute(new String[]{
+                        "--format", "text",
+                        "--source-root", "src/custom/java",
+                        "src/main/java/demo/Outside.java"
+                });
+
+        assertEquals(1, exit);
+        assertTrue(utf8(err).contains("Explicit file must stay inside the configured source roots"));
+        assertFalse(utf8(out).contains("Cognitive Complexity Report"));
+    }
+
+    @Test
+    void explicitPathMustStayInsideAnalysisRoot() throws Exception {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err))
+                .execute(new String[]{"../outside/src/main/java/demo/Sample.java"});
+
+        assertEquals(1, exit);
+        assertTrue(utf8(err).contains("Path must stay inside the analysis root"));
+        assertFalse(utf8(out).contains("Cognitive Complexity Report"));
+    }
+
+    @Test
     void thresholdFailureUsesCognitiveComplexityLimitFifteen() throws Exception {
         Path sourceRoot = tempDir.resolve("src/main/java/demo");
         Files.createDirectories(sourceRoot);
