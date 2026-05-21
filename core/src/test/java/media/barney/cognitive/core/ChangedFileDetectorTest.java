@@ -151,15 +151,15 @@ class ChangedFileDetectorTest {
     void ignoresSymlinkedChangedJavaFiles() throws Exception {
         assumeTrue(!isWindows(), "This symlink test requires filesystem symlinks");
 
+        run(tempDir, "git", "init");
         Path src = tempDir.resolve("src/main/java/demo");
         Files.createDirectories(src);
         Path target = tempDir.resolve("linked-target.java");
         Files.writeString(target, "class LinkedTarget {}\n");
         Path symlink = src.resolve("Linked.java");
-        Files.createSymbolicLink(symlink, target);
+        Files.createSymbolicLink(symlink, target.toAbsolutePath());
 
-        List<Path> changed = ChangedFileDetector.changedJavaFiles(tempDir,
-                ignored -> new ReadBeforeWaitProcess("?? src/main/java/demo/Linked.java\0"));
+        List<Path> changed = ChangedFileDetector.changedJavaFilesUnderSourceRoots(tempDir);
 
         assertEquals(List.of(), changed);
     }
