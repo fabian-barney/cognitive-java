@@ -20,7 +20,11 @@ class MainTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ByteArrayOutputStream err = new ByteArrayOutputStream();
 
-        int exit = Main.run(new String[]{"--help"}, tempDir, new PrintStream(out), new PrintStream(err));
+        int exit = Main.run(
+                new String[]{"--help"},
+                tempDir,
+                new PrintStream(out, false, StandardCharsets.UTF_8),
+                new PrintStream(err, false, StandardCharsets.UTF_8));
 
         assertEquals(0, exit);
         assertTrue(utf8(out).contains("Usage:"));
