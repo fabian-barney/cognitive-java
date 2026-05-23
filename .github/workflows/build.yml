@@ -196,7 +196,7 @@ jobs:
       - name: Resolve crap-java CLI
         shell: bash
         run: |
-          crap_java_version="$(sed -n 's:.*<crap-java.version>\(.*\)</crap-java.version>.*:\1:p' pom.xml | head -n 1)"
+          crap_java_version="$(mvn -q -N help:evaluate '-Dexpression=crap-java.version' -DforceStdout)"
           test -n "$crap_java_version"
           mvn -B -ntp -N dependency:copy \
             -Dartifact="media.barney:crap-java-cli:${crap_java_version}:jar" \
