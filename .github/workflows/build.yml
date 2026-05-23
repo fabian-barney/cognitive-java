@@ -198,7 +198,7 @@ jobs:
         run: |
           crap_java_version="$(sed -n 's:.*<crap-java.version>\(.*\)</crap-java.version>.*:\1:p' pom.xml | head -n 1)"
           test -n "$crap_java_version"
-          mvn -B -ntp dependency:copy \
+          mvn -B -ntp -N dependency:copy \
             -Dartifact="media.barney:crap-java-cli:${crap_java_version}:jar" \
             -DoutputDirectory=target/crap-java-gate
           echo "CRAP_JAVA_VERSION=${crap_java_version}" >> "$GITHUB_ENV"
