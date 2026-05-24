@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 0.5.0 - 2026-05-24
+## 0.5.1 - 2026-05-24
 
 ### Added
 
@@ -19,6 +19,10 @@
 ### Fixed
 
 - Release validation now fails on Maven Javadoc errors and runs a signed Maven publication preflight before release publication.
+
+### Publishing
+
+- Reissued the interrupted `0.5.0` release as `0.5.1` while preserving `v0.5.0` as the half-published Maven-only source pointer.
 
 ## 0.4.0 - 2026-04-10
 
