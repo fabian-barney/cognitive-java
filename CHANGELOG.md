@@ -2,15 +2,19 @@
 
 ## Unreleased
 
+## 0.5.0 - 2026-05-24
+
 ### Added
 
+- Added aligned primary-report controls, JUnit sidecars, report output paths, threshold overrides, and source-exclusion configuration across the CLI, Maven plugin, and Gradle plugin.
 - Added consumer-facing documentation for CLI report controls, threshold overrides, report outputs, source roots, and exclusion configuration across the CLI, Maven plugin, and Gradle plugin.
 - Added split self-hosted `cognitive-java Gate` JUnit sidecars for Maven-source and Gradle-plugin scans in CI.
 
 ### Changed
 
 - Expanded repository CI validation to cover JDK `17`, `21`, and `25`, plus Windows path-sensitive verification.
-- Updated release automation to run the repository `crap-java` and `cognitive-java` gates before publication.
+- Updated release automation to run the repository `crap-java` and `cognitive-java` gates, signed Maven publication preflight, and Gradle publication metadata validation before publication.
+- Refreshed source discovery, report publishing, and contributor documentation to match the static-analysis-only workflow and current published plugin behavior.
 
 ### Fixed
 
