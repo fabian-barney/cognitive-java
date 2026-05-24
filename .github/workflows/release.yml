@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: bash ./.github/scripts/verify-version-alignment.sh --expected-version "${GITHUB_REF_NAME#v}"
 
-      - name: Make Gradle wrapper executable
+      - name: Set up Gradle wrapper permissions
         run: chmod +x gradle-plugin/gradlew
 
       - name: Normalize and import GPG key
