@@ -39,7 +39,7 @@ jobs:
         run: bash ./.github/scripts/verify-version-alignment.sh --expected-version "${GITHUB_REF_NAME#v}"
 
       - name: Build cognitive-java CLI
-        run: mvn -B -pl cli -am package
+        run: mvn -B -ntp -P!quality-gates-all -pl cli -am package
 
       - name: Resolve cognitive-java CLI jar path
         shell: bash
@@ -62,7 +62,7 @@ jobs:
 
       - name: Resolve crap-java CLI
         run: >
-          mvn -B dependency:copy
+          mvn -B -ntp -P!quality-gates-all dependency:copy
           -Dartifact="media.barney:crap-java-cli:${CRAP_JAVA_VERSION}:jar"
           -DoutputDirectory=target/crap-java-gate
 
@@ -163,14 +163,17 @@ jobs:
           MAVEN_CENTRAL_TOKEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_TOKEN_USERNAME }}
           MAVEN_CENTRAL_TOKEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
-        run: mvn -B -Prelease -Dcentral.skipPublishing=true -pl .,cli,maven-plugin -am deploy
+        run: >
+          mvn -B -ntp -P!quality-gates-all,release
+          -Dcentral.skipPublishing=true
+          -pl .,cli,maven-plugin -am deploy
 
       - name: Publish Maven artifacts
         env:
           MAVEN_CENTRAL_TOKEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_TOKEN_USERNAME }}
           MAVEN_CENTRAL_TOKEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
-        run: mvn -B -Prelease -pl .,cli,maven-plugin -am deploy
+        run: mvn -B -ntp -P!quality-gates-all,release -pl .,cli,maven-plugin -am deploy
 
       - name: Publish Gradle plugin artifacts to Maven Central
         env:
