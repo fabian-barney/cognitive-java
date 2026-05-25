@@ -1,3 +1,5 @@
+import net.ltgt.gradle.errorprone.CheckSeverity
+import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.DefaultTask
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.file.RegularFileProperty
@@ -19,6 +21,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 plugins {
     `java-gradle-plugin`
     id("com.gradle.plugin-publish") version "2.1.1"
+    id("net.ltgt.errorprone") version "5.1.0" apply false
     jacoco
     signing
 }
@@ -52,8 +55,13 @@ abstract class VerifyCoreJarTask : DefaultTask() {
 val projectVersion = version.toString()
 val coreJar = layout.projectDirectory.file("../core/target/cognitive-java-core-${projectVersion}.jar")
 val junitVersion = parentPomProperty("junit.version")
+val jspecifyVersion = parentPomProperty("jspecify.version")
 val jtoonVersion = parentPomProperty("jtoon.version")
 val jacksonVersion = parentPomProperty("jackson.version")
+val errorproneVersion = parentPomProperty("errorprone.version")
+val nullawayVersion = parentPomProperty("nullaway.version")
+val nullawayAnnotatedPackages = parentPomProperty("nullaway.annotated.packages")
+val qualityNullaway = providers.gradleProperty("qualityNullaway").map(String::toBoolean).getOrElse(false)
 val gpgPrivateKey = providers.environmentVariable("MAVEN_GPG_PRIVATE_KEY")
 val gpgPassphrase = providers.environmentVariable("MAVEN_GPG_PASSPHRASE")
 val mavenCentralTokenUsername = providers.gradleProperty("mavenCentralTokenUsername")
@@ -63,6 +71,10 @@ val mavenCentralTokenPassword = providers.gradleProperty("mavenCentralTokenPassw
 
 jacoco {
     toolVersion = "0.8.13"
+}
+
+if (qualityNullaway) {
+    apply(plugin = "net.ltgt.errorprone")
 }
 
 val verifyCoreJar = tasks.register<VerifyCoreJarTask>("verifyCoreJar") {
@@ -80,10 +92,44 @@ dependencies {
     implementation(platform("com.fasterxml.jackson:jackson-bom:$jacksonVersion"))
     implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
+    compileOnly("org.jspecify:jspecify:$jspecifyVersion")
+    if (qualityNullaway) {
+        add("errorprone", "com.google.errorprone:error_prone_core:$errorproneVersion")
+        add("errorprone", "com.uber.nullaway:nullaway:$nullawayVersion")
+    }
     testImplementation(platform("org.junit:junit-bom:$junitVersion"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation(gradleTestKit())
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+if (qualityNullaway) {
+    tasks.withType<JavaCompile>().configureEach {
+        options.isFork = true
+        options.forkOptions.jvmArgs = (options.forkOptions.jvmArgs ?: mutableListOf()) + listOf(
+            "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED",
+            "--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED",
+            "--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED"
+        )
+        options.compilerArgs.addAll(listOf(
+            "-XDcompilePolicy=simple",
+            "--should-stop=ifError=FLOW",
+            "-XDaddTypeAnnotationsToSymbol=true"
+        ))
+        options.errorprone {
+            isEnabled = true
+            disableAllChecks.set(true)
+            check("NullAway", CheckSeverity.ERROR)
+            option("NullAway:AnnotatedPackages", nullawayAnnotatedPackages)
+        }
+    }
 }
 
 fun parentPomProperty(name: String): String {
