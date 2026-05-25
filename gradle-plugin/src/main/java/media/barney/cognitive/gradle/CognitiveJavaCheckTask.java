@@ -203,8 +203,8 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
 
     @TaskAction
     void runCheck() throws Exception {
-        Path configuredOutputPath = outputPath();
-        Path configuredJunitReportPath = junitReportPath();
+        @Nullable Path configuredOutputPath = outputPath();
+        @Nullable Path configuredJunitReportPath = junitReportPath();
         validateReportOptions(configuredOutputPath, configuredJunitReportPath);
         List<String> sourceArguments = sourceArguments();
         if (sourceArguments.isEmpty()) {
