@@ -501,8 +501,8 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     }
 
     private boolean resolvesOutsideRoot(Path root, Path reportPath) {
-        Path rootReal = realPathForComparison(root);
-        Path reportReal = realPathForComparison(reportPath);
+        @Nullable Path rootReal = realPathForComparison(root);
+        @Nullable Path reportReal = realPathForComparison(reportPath);
         return rootReal != null && reportReal != null && !reportReal.startsWith(rootReal);
     }
 
@@ -585,8 +585,8 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     }
 
     private boolean realPathStartsWith(Path reportPath, Path internalRoot) {
-        Path realReportPath = realPathForComparison(reportPath);
-        Path realInternalRoot = realPathForComparison(internalRoot);
+        @Nullable Path realReportPath = realPathForComparison(reportPath);
+        @Nullable Path realInternalRoot = realPathForComparison(internalRoot);
         return realReportPath != null && realInternalRoot != null && realReportPath.startsWith(realInternalRoot);
     }
 
@@ -733,8 +733,8 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
             ReportSnapshot outputBefore,
             ReportSnapshot junitBefore
     ) throws Exception {
-        RememberedReport rememberedOutput = rememberedOutputPath();
-        RememberedReport rememberedJunitReport = rememberedJunitReportPath();
+        @Nullable RememberedReport rememberedOutput = rememberedOutputPath();
+        @Nullable RememberedReport rememberedJunitReport = rememberedJunitReportPath();
         deleteNewUnrememberedChangedReport(currentOutputPath, outputBefore, rememberedOutput);
         deleteNewUnrememberedChangedReport(currentJunitReportPath, junitBefore, rememberedJunitReport);
         if (shouldRememberChangedReport(currentOutputPath, outputBefore, rememberedOutput)) {
@@ -826,7 +826,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     }
 
     private void deleteMovedOutput(@Nullable Path currentPath, @Nullable Path otherCurrentPath) throws Exception {
-        RememberedReport rememberedReport = rememberedOutputPath();
+        @Nullable RememberedReport rememberedReport = rememberedOutputPath();
         deleteRememberedOutputIfMoved(rememberedReport, currentPath, otherCurrentPath);
         deleteOutputStateIfUnset(currentPath);
     }
@@ -866,7 +866,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         if (currentPath == null) {
             return;
         }
-        RememberedReport rememberedReport = rememberedJunitReportPath();
+        @Nullable RememberedReport rememberedReport = rememberedJunitReportPath();
         if (!shouldKeepRememberedReport(rememberedReport, currentPath, otherCurrentPath)) {
             deleteRememberedReport(rememberedReport);
         }
@@ -890,7 +890,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         if (getJunit().get()) {
             return;
         }
-        RememberedReport rememberedReport = rememberedJunitReportPath();
+        @Nullable RememberedReport rememberedReport = rememberedJunitReportPath();
         if (!shouldKeepRememberedReport(rememberedReport, currentOutputPath, null)) {
             deleteRememberedReport(rememberedReport);
         }
@@ -1185,8 +1185,8 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     }
 
     private boolean sameRealPath(Path first, Path second) {
-        Path firstRealPath = realPathForComparison(first);
-        Path secondRealPath = realPathForComparison(second);
+        @Nullable Path firstRealPath = realPathForComparison(first);
+        @Nullable Path secondRealPath = realPathForComparison(second);
         return firstRealPath != null && firstRealPath.equals(secondRealPath);
     }
 
