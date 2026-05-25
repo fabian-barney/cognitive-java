@@ -735,6 +735,29 @@ class CognitiveJavaGradlePluginTest {
     }
 
     @Test
+    void rememberedOutputDetectsOtherOwnerLink() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        assumeHardLinksAvailable(projectRoot);
+        Path report = projectRoot.resolve("build/reports/cognitive-java/report.json");
+        Files.createDirectories(report.getParent());
+        Files.writeString(report, "{}");
+        CognitiveJavaCheckTask firstTask = newCheckTask(projectRoot, "first-cognitive-java-check");
+        CognitiveJavaCheckTask secondTask = newCheckTask(projectRoot, "second-cognitive-java-check");
+
+        invoke(firstTask, "rememberOutputPath", new Class<?>[]{Path.class}, new Object[]{report});
+        invoke(secondTask, "rememberOutputPath", new Class<?>[]{Path.class}, new Object[]{report});
+        Object rememberedOutput = invoke(firstTask, "rememberedOutputPath", new Class<?>[]{}, new Object[]{});
+
+        assertNotNull(rememberedOutput);
+        assertTrue((boolean) invoke(
+                firstTask,
+                "hasOtherOwnerLink",
+                new Class<?>[]{rememberedOutput.getClass()},
+                new Object[]{rememberedOutput}
+        ));
+    }
+
+    @Test
     void caseSensitivityDetectionCachesResults() throws Exception {
         Path projectRoot = tempDir.toRealPath();
         CognitiveJavaCheckTask task = newCheckTask(projectRoot);
