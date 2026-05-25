@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -71,7 +70,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     private final Provider<String> absentString;
     private final Provider<RegularFile> absentRegularFile;
     private final Map<Path, Boolean> caseSensitivityByDirectory = new HashMap<>();
-    private final Map<Path, Boolean> caseSensitivityByFileStore = new HashMap<>();
+    private final Map<Path, Boolean> caseSensitivityByRoot = new HashMap<>();
 
     public CognitiveJavaCheckTask() {
         gradleProjectRootPath = getProject().getProjectDir().toPath().toAbsolutePath().normalize();
@@ -650,9 +649,9 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
             caseSensitivityByDirectory.put(normalizedDirectory, detected);
             return detected;
         }
-        boolean fileStoreResult = cachedFileStoreCaseSensitivity(normalizedDirectory);
-        caseSensitivityByDirectory.put(normalizedDirectory, fileStoreResult);
-        return fileStoreResult;
+        boolean rootResult = cachedRootCaseSensitivity(normalizedDirectory);
+        caseSensitivityByDirectory.put(normalizedDirectory, rootResult);
+        return rootResult;
     }
 
     private java.util.Optional<Boolean> probeCaseInsensitivity(Path directory) {
@@ -668,21 +667,21 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         }
     }
 
-    private boolean cachedFileStoreCaseSensitivity(Path directory) {
+    private boolean cachedRootCaseSensitivity(Path directory) {
         try {
             Path realDirectory = directory.toRealPath();
-            Files.getFileStore(realDirectory);
-            Path cacheKey = realDirectory.toAbsolutePath().normalize();
-            Path fileStoreRoot = realDirectory.getRoot();
-            if (fileStoreRoot != null) {
-                cacheKey = fileStoreRoot.toAbsolutePath().normalize();
+            Path cacheKey = realDirectory.getRoot();
+            if (cacheKey == null) {
+                cacheKey = realDirectory.toAbsolutePath().normalize();
+            } else {
+                cacheKey = cacheKey.toAbsolutePath().normalize();
             }
-            Boolean cached = caseSensitivityByFileStore.get(cacheKey);
+            Boolean cached = caseSensitivityByRoot.get(cacheKey);
             if (cached != null) {
                 return cached;
             }
             boolean fallback = isLikelyCaseInsensitiveOs();
-            caseSensitivityByFileStore.put(cacheKey, fallback);
+            caseSensitivityByRoot.put(cacheKey, fallback);
             return fallback;
         } catch (IOException | SecurityException exception) {
             return isLikelyCaseInsensitiveOs();
