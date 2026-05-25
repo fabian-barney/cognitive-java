@@ -765,10 +765,10 @@ class CognitiveJavaGradlePluginTest {
 
         boolean detected = invokeBoolean(task, "isCaseInsensitive", Path.class, candidate);
         boolean cached = invokeBoolean(task, "isCaseInsensitive", Path.class, candidate);
-        boolean fileStoreFallback = invokeBoolean(task, "cachedFileStoreCaseSensitivity", Path.class, projectRoot);
+        boolean rootFallback = invokeBoolean(task, "cachedRootCaseSensitivity", Path.class, projectRoot);
 
         assertEquals(detected, cached);
-        assertEquals(CognitiveJavaCheckTask.isLikelyCaseInsensitiveOs(), fileStoreFallback);
+        assertEquals(CognitiveJavaCheckTask.isLikelyCaseInsensitiveOs(), rootFallback);
     }
 
     @Test
