@@ -197,12 +197,24 @@ record ReportOptions(
     }
 
     private static boolean sameFileName(Path first, Path second, @Nullable Path parent) {
-        String firstName = first.getFileName().toString();
-        String secondName = second.getFileName().toString();
-        if (firstName.equals(secondName)) {
-            return true;
+        Path firstFileName = first.getFileName();
+        Path secondFileName = second.getFileName();
+        return sameNamedPaths(firstFileName, secondFileName, parent);
+    }
+
+    private static boolean sameNamedPaths(@Nullable Path firstFileName,
+                                          @Nullable Path secondFileName,
+                                          @Nullable Path parent) {
+        if (firstFileName == null || secondFileName == null) {
+            return false;
         }
-        return sameCaseInsensitiveFileName(firstName, secondName, parent);
+        return sameFileNames(firstFileName.toString(), secondFileName.toString(), parent);
+    }
+
+    private static boolean sameFileNames(String firstName,
+                                         String secondName,
+                                         @Nullable Path parent) {
+        return firstName.equals(secondName) || sameCaseInsensitiveFileName(firstName, secondName, parent);
     }
 
     private static boolean sameCaseInsensitiveFileName(String firstName,
@@ -239,8 +251,24 @@ record ReportOptions(
     }
 
     private static boolean caseVariantExists(Path probe) {
-        Path variant = probe.resolveSibling(probe.getFileName().toString().toUpperCase(Locale.ROOT));
-        return !probe.getFileName().toString().equals(variant.getFileName().toString()) && Files.exists(variant);
+        Path fileName = probe.getFileName();
+        if (fileName == null) {
+            return false;
+        }
+        return caseVariantExists(probe, fileName.toString());
+    }
+
+    private static boolean caseVariantExists(Path probe, String name) {
+        Path variant = probe.resolveSibling(name.toUpperCase(Locale.ROOT));
+        Path variantFileName = variant.getFileName();
+        if (variantFileName == null) {
+            return false;
+        }
+        return differentExistingVariant(name, variantFileName.toString(), variant);
+    }
+
+    private static boolean differentExistingVariant(String name, String variantName, Path variant) {
+        return !name.equals(variantName) && Files.exists(variant);
     }
 
     static boolean isLikelyCaseInsensitiveOs() {

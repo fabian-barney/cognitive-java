@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -61,9 +60,9 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
 
     private final Provider<RegularFile> defaultJunitReport;
     private final Provider<RegularFile> executionMarker;
-    private final RegularFileProperty junitReportState;
-    private final RegularFileProperty outputState;
-    private final RegularFileProperty stateLock;
+    private final Provider<RegularFile> junitReportState;
+    private final Provider<RegularFile> outputState;
+    private final Provider<RegularFile> stateLock;
     private final List<Provider<Directory>> internalExecutionMarkerRootProviders;
     private final List<Path> internalRememberedStateRootPaths;
     private final Path gradleProjectRootPath;
@@ -71,7 +70,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     private final Provider<String> absentString;
     private final Provider<RegularFile> absentRegularFile;
     private final Map<Path, Boolean> caseSensitivityByDirectory = new HashMap<>();
-    private final Map<Path, Boolean> caseSensitivityByFileStore = new HashMap<>();
+    private final Map<Path, Boolean> caseSensitivityByRoot = new HashMap<>();
 
     public CognitiveJavaCheckTask() {
         gradleProjectRootPath = getProject().getProjectDir().toPath().toAbsolutePath().normalize();
@@ -83,12 +82,9 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
                 .flatMap(path -> getProject().getLayout().getBuildDirectory().file(path));
         executionMarker = getProject().getLayout().getBuildDirectory()
                 .file("tmp/cognitive-java/" + getName() + "/execution.marker");
-        junitReportState = getProject().getObjects().fileProperty();
-        junitReportState.fileValue(localStateFile("junit-report.path"));
-        outputState = getProject().getObjects().fileProperty();
-        outputState.fileValue(localStateFile("primary-output.path"));
-        stateLock = getProject().getObjects().fileProperty();
-        stateLock.fileValue(globalStateFile("state.lock"));
+        junitReportState = localStateFileProvider("junit-report.path");
+        outputState = localStateFileProvider("primary-output.path");
+        stateLock = globalStateFileProvider("state.lock");
         internalExecutionMarkerRootProviders = getProject().getRootProject().getAllprojects().stream()
                 .map(project -> project.getLayout().getBuildDirectory().dir("tmp/cognitive-java"))
                 .toList();
@@ -647,41 +643,45 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         if (cachedDirectoryResult != null) {
             return cachedDirectoryResult;
         }
-        Boolean probed = probeCaseInsensitivity(normalizedDirectory);
-        if (probed != null) {
-            caseSensitivityByDirectory.put(normalizedDirectory, probed);
-            return probed;
+        java.util.Optional<Boolean> probed = probeCaseInsensitivity(normalizedDirectory);
+        if (probed.isPresent()) {
+            boolean detected = probed.get();
+            caseSensitivityByDirectory.put(normalizedDirectory, detected);
+            return detected;
         }
-        Boolean fileStoreResult = cachedFileStoreCaseSensitivity(normalizedDirectory);
-        caseSensitivityByDirectory.put(normalizedDirectory, fileStoreResult);
-        return fileStoreResult;
+        boolean rootResult = cachedRootCaseSensitivity(normalizedDirectory);
+        caseSensitivityByDirectory.put(normalizedDirectory, rootResult);
+        return rootResult;
     }
 
-    private @Nullable Boolean probeCaseInsensitivity(Path directory) {
+    private java.util.Optional<Boolean> probeCaseInsensitivity(Path directory) {
         try {
             Path probe = Files.createTempFile(directory, ".cognitive-java-case-", ".tmp");
             try {
-                return caseVariantExists(probe);
+                return java.util.Optional.of(caseVariantExists(probe));
             } finally {
                 Files.deleteIfExists(probe);
             }
         } catch (IOException | SecurityException exception) {
-            return null;
+            return java.util.Optional.empty();
         }
     }
 
-    private boolean cachedFileStoreCaseSensitivity(Path directory) {
+    private boolean cachedRootCaseSensitivity(Path directory) {
         try {
             Path realDirectory = directory.toRealPath();
-            FileStore fileStore = Files.getFileStore(realDirectory);
-            Path fileStoreKey = realDirectory.getRoot() == null ? realDirectory : realDirectory.getRoot();
-            Path cacheKey = fileStoreKey.toAbsolutePath().normalize();
-            Boolean cached = caseSensitivityByFileStore.get(cacheKey);
+            Path cacheKey = realDirectory.getRoot();
+            if (cacheKey == null) {
+                cacheKey = realDirectory.toAbsolutePath().normalize();
+            } else {
+                cacheKey = cacheKey.toAbsolutePath().normalize();
+            }
+            Boolean cached = caseSensitivityByRoot.get(cacheKey);
             if (cached != null) {
                 return cached;
             }
             boolean fallback = isLikelyCaseInsensitiveOs();
-            caseSensitivityByFileStore.put(cacheKey, fallback);
+            caseSensitivityByRoot.put(cacheKey, fallback);
             return fallback;
         } catch (IOException | SecurityException exception) {
             return isLikelyCaseInsensitiveOs();
@@ -698,8 +698,16 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     }
 
     private boolean caseVariantExists(Path probe) {
-        Path variant = probe.resolveSibling(probe.getFileName().toString().toUpperCase(Locale.ROOT));
-        return !probe.getFileName().toString().equals(variant.getFileName().toString()) && Files.exists(variant);
+        Path fileName = probe.getFileName();
+        if (fileName == null) {
+            return false;
+        }
+        String name = fileName.toString();
+        Path variant = probe.resolveSibling(name.toUpperCase(Locale.ROOT));
+        Path variantFileName = variant.getFileName();
+        return variantFileName != null
+                && !name.equals(variantFileName.toString())
+                && Files.exists(variant);
     }
 
     static boolean isLikelyCaseInsensitiveOs() {
@@ -795,7 +803,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     }
 
     private <T> T withReportStateLock(Path lockPath, LockedAction<T> action) throws Exception {
-        Files.createDirectories(lockPath.getParent());
+        Files.createDirectories(Objects.requireNonNull(lockPath.getParent()));
         ReentrantLock inProcessLock = inProcessStateLock(lockPath);
         inProcessLock.lock();
         try {
@@ -817,7 +825,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
 
     private void writeExecutionMarker() throws Exception {
         Path markerPath = executionMarkerPath();
-        Files.createDirectories(markerPath.getParent());
+        Files.createDirectories(Objects.requireNonNull(markerPath.getParent()));
         Files.writeString(markerPath, "ok\n");
     }
 
@@ -997,7 +1005,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     }
 
     private void rememberReportPath(Path statePath, Path reportPath) throws Exception {
-        Files.createDirectories(statePath.getParent());
+        Files.createDirectories(Objects.requireNonNull(statePath.getParent()));
         Path ownerLink = ownerLinkPath(statePath);
         Files.deleteIfExists(ownerLink);
         String ownership = ownership(reportPath, ownerLink);
@@ -1039,7 +1047,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     }
 
     private Path ownerLinkPath(Path statePath) {
-        String fileName = statePath.getFileName().toString();
+        String fileName = Objects.requireNonNull(statePath.getFileName()).toString();
         String ownerFileName = fileName.endsWith(".path")
                 ? fileName.substring(0, fileName.length() - ".path".length()) + ".owner"
                 : fileName + ".owner";
@@ -1094,6 +1102,14 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
 
     private Path junitReportStatePath() {
         return junitReportState.get().getAsFile().toPath().toAbsolutePath().normalize();
+    }
+
+    private Provider<RegularFile> localStateFileProvider(String fileName) {
+        return getProject().getLayout().file(getProject().getProviders().provider(() -> localStateFile(fileName)));
+    }
+
+    private Provider<RegularFile> globalStateFileProvider(String fileName) {
+        return getProject().getLayout().file(getProject().getProviders().provider(() -> globalStateFile(fileName)));
     }
 
     private File localStateFile(String fileName) {
