@@ -336,7 +336,7 @@ class CognitiveJavaGradlePluginTest {
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
-        assertTrue(exception.getMessage().contains("../outside"));
+        assertTrue(exceptionMessage(exception).contains("../outside"));
     }
 
     @Test
@@ -347,8 +347,8 @@ class CognitiveJavaGradlePluginTest {
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
-        assertTrue(exception.getMessage().contains("src/missing/java"));
-        assertTrue(exception.getMessage().contains(
+        assertTrue(exceptionMessage(exception).contains("src/missing/java"));
+        assertTrue(exceptionMessage(exception).contains(
                 projectRoot.resolve("src/missing/java").toAbsolutePath().normalize().toString()
         ));
     }
@@ -365,7 +365,7 @@ class CognitiveJavaGradlePluginTest {
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
-        assertTrue(exception.getMessage().contains("must not point to or traverse a symlink"));
+        assertTrue(exceptionMessage(exception).contains("must not point to or traverse a symlink"));
     }
 
     @Test
@@ -478,7 +478,7 @@ class CognitiveJavaGradlePluginTest {
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
-        assertTrue(exception.getMessage().contains("output and junitReport must not point to the same file"));
+        assertTrue(exceptionMessage(exception).contains("output and junitReport must not point to the same file"));
     }
 
     @Test
@@ -496,7 +496,7 @@ class CognitiveJavaGradlePluginTest {
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
-        assertTrue(exception.getMessage().contains("output and junitReport must not point to the same file"));
+        assertTrue(exceptionMessage(exception).contains("output and junitReport must not point to the same file"));
     }
 
     @Test
@@ -510,7 +510,7 @@ class CognitiveJavaGradlePluginTest {
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
-        assertTrue(exception.getMessage().contains("output must not point to a directory"));
+        assertTrue(exceptionMessage(exception).contains("output must not point to a directory"));
     }
 
     @Test
@@ -522,7 +522,7 @@ class CognitiveJavaGradlePluginTest {
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
-        assertTrue(exception.getMessage().contains("output must not point to a filesystem root"));
+        assertTrue(exceptionMessage(exception).contains("output must not point to a filesystem root"));
     }
 
     @Test
@@ -538,7 +538,7 @@ class CognitiveJavaGradlePluginTest {
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
-        assertTrue(exception.getMessage().contains("output must not point to a filesystem root"));
+        assertTrue(exceptionMessage(exception).contains("output must not point to a filesystem root"));
     }
 
     @Test
@@ -550,7 +550,7 @@ class CognitiveJavaGradlePluginTest {
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
-        assertTrue(exception.getMessage().contains("output must not point to the Gradle project root"));
+        assertTrue(exceptionMessage(exception).contains("output must not point to the Gradle project root"));
     }
 
     @Test
@@ -562,7 +562,7 @@ class CognitiveJavaGradlePluginTest {
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
-        assertTrue(exception.getMessage().contains("output must stay inside the Gradle project root"));
+        assertTrue(exceptionMessage(exception).contains("output must stay inside the Gradle project root"));
     }
 
     @Test
@@ -581,7 +581,7 @@ class CognitiveJavaGradlePluginTest {
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
-        assertTrue(exception.getMessage().contains("output must stay inside the analysisRoot root"));
+        assertTrue(exceptionMessage(exception).contains("output must stay inside the analysisRoot root"));
     }
 
     @Test
@@ -593,7 +593,7 @@ class CognitiveJavaGradlePluginTest {
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
-        assertTrue(exception.getMessage().contains("output must not point to a cognitive-java internal task file"));
+        assertTrue(exceptionMessage(exception).contains("output must not point to a cognitive-java internal task file"));
     }
 
     @Test
@@ -610,7 +610,7 @@ class CognitiveJavaGradlePluginTest {
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
-        assertTrue(exception.getMessage().contains("output must not point to a cognitive-java internal task file"));
+        assertTrue(exceptionMessage(exception).contains("output must not point to a cognitive-java internal task file"));
     }
 
     @Test
@@ -687,7 +687,7 @@ class CognitiveJavaGradlePluginTest {
 
         GradleException exception = assertThrows(GradleException.class, secondTask::runCheck);
 
-        assertTrue(exception.getMessage().contains("cognitive-java-check failed with exit 1"));
+        assertTrue(exceptionMessage(exception).contains("cognitive-java-check failed with exit 1"));
         assertTrue(Files.exists(oldOutput));
         assertFalse(Files.exists(newOutput));
     }
@@ -732,6 +732,29 @@ class CognitiveJavaGradlePluginTest {
 
         assertFalse(Files.exists(newOutput));
         assertEquals(rememberedState, Files.readString(outputStatePath(task)));
+    }
+
+    @Test
+    void rememberedOutputDetectsOtherOwnerLink() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        assumeHardLinksAvailable(projectRoot);
+        Path report = projectRoot.resolve("build/reports/cognitive-java/report.json");
+        Files.createDirectories(report.getParent());
+        Files.writeString(report, "{}");
+        CognitiveJavaCheckTask firstTask = newCheckTask(projectRoot, "first-cognitive-java-check");
+        CognitiveJavaCheckTask secondTask = newCheckTask(projectRoot, "second-cognitive-java-check");
+
+        invoke(firstTask, "rememberOutputPath", new Class<?>[]{Path.class}, new Object[]{report});
+        invoke(secondTask, "rememberOutputPath", new Class<?>[]{Path.class}, new Object[]{report});
+        Object rememberedOutput = invoke(firstTask, "rememberedOutputPath", new Class<?>[]{}, new Object[]{});
+
+        assertNotNull(rememberedOutput);
+        assertTrue((boolean) invoke(
+                firstTask,
+                "hasOtherOwnerLink",
+                new Class<?>[]{rememberedOutput.getClass()},
+                new Object[]{rememberedOutput}
+        ));
     }
 
     @Test
@@ -868,6 +891,12 @@ class CognitiveJavaGradlePluginTest {
         Method executionMarkerPath = CognitiveJavaCheckTask.class.getDeclaredMethod("executionMarkerPath");
         executionMarkerPath.setAccessible(true);
         return (Path) executionMarkerPath.invoke(task);
+    }
+
+    private String exceptionMessage(Throwable exception) {
+        String message = exception.getMessage();
+        assertNotNull(message);
+        return message;
     }
 
     private boolean isWindows() {
