@@ -5,7 +5,8 @@ import java.util.List;
 record ParsedMethod(
         String packageName,
         String className,
-        String methodName,
+        String declarationName,
+        String displayName,
         String sourcePath,
         int arity,
         int startLine,
@@ -20,10 +21,10 @@ record ParsedMethod(
     }
 
     MethodKey key() {
-        return new MethodKey(className, methodName, arity);
+        return new MethodKey(className, declarationName, arity);
     }
 
     String id() {
-        return sourcePath + "#" + className + "#" + methodName + "/" + arity + ":" + startLine;
+        return sourcePath + "#" + className + "#" + declarationName + "/" + arity + ":" + startLine;
     }
 }

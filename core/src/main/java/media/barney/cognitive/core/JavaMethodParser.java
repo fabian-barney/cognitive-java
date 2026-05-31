@@ -18,6 +18,7 @@ import com.sun.source.tree.LambdaExpressionTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodInvocationTree;
 import com.sun.source.tree.MethodTree;
+import com.sun.source.tree.NewClassTree;
 import com.sun.source.tree.ParenthesizedTree;
 import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.SwitchExpressionTree;
@@ -37,7 +38,6 @@ import java.net.URISyntaxException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -57,19 +57,15 @@ final class JavaMethodParser {
 
     static List<MethodDescriptor> parse(String sourceName, String source) {
         List<ParsedMethod> parsedMethods = parseDetailed(sourceName, source);
-        Map<String, Integer> complexities = new LinkedHashMap<>();
-        for (MethodMetrics metric : CognitiveComplexityAnalyzer.metricsForParsedMethods(parsedMethods)) {
-            complexities.put(metric.className() + "#" + metric.methodName(), metric.cognitiveComplexity());
-        }
+        Map<String, Integer> complexities = CognitiveComplexityAnalyzer.complexitiesByMethodId(parsedMethods);
 
         List<MethodDescriptor> methods = new ArrayList<>(parsedMethods.size());
         for (ParsedMethod parsedMethod : parsedMethods) {
-            String key = parsedMethod.className() + "#" + parsedMethod.methodName();
             methods.add(new MethodDescriptor(
-                    parsedMethod.methodName(),
+                    parsedMethod.displayName(),
                     parsedMethod.startLine(),
                     parsedMethod.endLine(),
-                    Objects.requireNonNull(complexities.get(key))));
+                    Objects.requireNonNull(complexities.get(parsedMethod.id()))));
         }
         return methods;
     }
@@ -137,8 +133,11 @@ final class JavaMethodParser {
         private final String sourcePath;
         private final SourcePositions positions;
         private final List<ParsedMethod> methods;
-        private final Deque<String> classNames = new ArrayDeque<>();
+        private final Deque<ClassContext> classContexts = new ArrayDeque<>();
+        private final Deque<String> displayContextSegments = new ArrayDeque<>();
         private final Deque<List<String>> classAnnotations = new ArrayDeque<>();
+        private int contextualClassDepth;
+        private int methodContextDepth;
 
         private MethodScanner(CompilationUnitTree unit,
                               String packageName,
@@ -154,41 +153,92 @@ final class JavaMethodParser {
 
         @Override
         public Void visitClass(ClassTree node, Void unused) {
-            String simpleName = node.getSimpleName().toString();
-            if (simpleName.isEmpty()) {
-                return null;
-            }
-            classNames.addLast(simpleName);
+            ClassContext classContext = classContext(node);
+            classContexts.addLast(classContext);
+            displayContextSegments.addLast(classContext.displaySegment());
             classAnnotations.addLast(classAnnotations(node));
+            if (classContext.contextual()) {
+                contextualClassDepth++;
+            }
             try {
                 return super.visitClass(node, null);
             } finally {
+                if (classContext.contextual()) {
+                    contextualClassDepth--;
+                }
                 classAnnotations.removeLast();
-                classNames.removeLast();
+                displayContextSegments.removeLast();
+                classContexts.removeLast();
             }
         }
 
         @Override
         public Void visitMethod(MethodTree node, Void unused) {
-            if (node.getBody() == null || node.getReturnType() == null) {
+            if (node.getBody() == null) {
                 return null;
             }
 
-            long start = positions.getStartPosition(unit, node);
-            long bodyEndExclusive = positions.getEndPosition(unit, node.getBody());
-            MethodAnalysis analysis = MethodAnalysisScanner.analyze(node, currentClassName());
-            methods.add(new ParsedMethod(
-                    packageName,
-                    currentClassName(),
-                    node.getName().toString(),
-                    sourcePath,
-                    node.getParameters().size(),
-                    lineNumber(start),
-                    lineNumber(Math.max(start, bodyEndExclusive - 1)),
-                    currentClassAnnotations(),
-                    analysis.cognitiveComplexity(),
-                    analysis.calls()));
-            return null;
+            MethodLineRange lineRange = methodLineRange(unit, node, positions);
+            String declarationName = declarationName(node);
+            String displayName = displayName(declarationName);
+            if (lineRange != null) {
+                MethodAnalysis analysis = MethodAnalysisScanner.analyze(node, currentClassName());
+                methods.add(new ParsedMethod(
+                        packageName,
+                        currentClassName(),
+                        declarationName,
+                        displayName,
+                        sourcePath,
+                        node.getParameters().size(),
+                        lineRange.startLine(),
+                        lineRange.endLine(),
+                        currentClassAnnotations(),
+                        analysis.cognitiveComplexity(),
+                        analysis.calls()));
+            }
+
+            displayContextSegments.addLast(declarationName);
+            methodContextDepth++;
+            try {
+                return super.visitMethod(node, null);
+            } finally {
+                methodContextDepth--;
+                displayContextSegments.removeLast();
+            }
+        }
+
+        private ClassContext classContext(ClassTree node) {
+            String simpleName = node.getSimpleName().toString();
+            if (simpleName.isEmpty()) {
+                SourceLocation location = sourceLocation(node);
+                String typeName = anonymousTypeName();
+                return new ClassContext(
+                        "anonymous@" + location.display(),
+                        "<anonymous " + typeName + "@" + location.display() + ">",
+                        "anonymous@" + location.display(),
+                        true);
+            }
+            if (isLocalClass()) {
+                SourceLocation location = sourceLocation(node);
+                String segment = simpleName + "@" + location.display();
+                return new ClassContext(segment, segment, simpleName, true);
+            }
+            return new ClassContext(simpleName, simpleName, simpleName, false);
+        }
+
+        private boolean isLocalClass() {
+            return getCurrentPath().getParentPath() != null
+                    && !(getCurrentPath().getParentPath().getLeaf() instanceof CompilationUnitTree)
+                    && !(getCurrentPath().getParentPath().getLeaf() instanceof ClassTree);
+        }
+
+        private String anonymousTypeName() {
+            if (getCurrentPath().getParentPath() != null
+                    && getCurrentPath().getParentPath().getLeaf() instanceof NewClassTree newClass
+                    && newClass.getIdentifier() != null) {
+                return newClass.getIdentifier().toString().replaceAll("\\s+", " ");
+            }
+            return "?";
         }
 
         private static List<String> classAnnotations(ClassTree node) {
@@ -197,18 +247,94 @@ final class JavaMethodParser {
                     .toList();
         }
 
+        private String declarationName(MethodTree node) {
+            if (isConstructor(node)) {
+                return currentSourceClassSimpleName();
+            }
+            return node.getName().toString();
+        }
+
+        private String displayName(String declarationName) {
+            if (!requiresContextualMethodName()) {
+                return declarationName;
+            }
+            List<String> segments = new ArrayList<>(displayContextSegments);
+            segments.add(declarationName);
+            return String.join(".", segments);
+        }
+
+        private boolean requiresContextualMethodName() {
+            return contextualClassDepth > 0 || methodContextDepth > 0;
+        }
+
         private String currentClassName() {
-            String nestedClassName = String.join(".", classNames);
+            String nestedClassName = classContexts.stream()
+                    .map(ClassContext::identitySegment)
+                    .collect(java.util.stream.Collectors.joining("."));
             return packageName.isEmpty() ? nestedClassName : packageName + "." + nestedClassName;
+        }
+
+        private String currentSourceClassSimpleName() {
+            return classContexts.getLast().sourceSimpleName();
         }
 
         private List<String> currentClassAnnotations() {
             return classAnnotations.isEmpty() ? List.of() : classAnnotations.getLast();
         }
 
-        private int lineNumber(long position) {
-            return (int) unit.getLineMap().getLineNumber(position);
+        private SourceLocation sourceLocation(Tree node) {
+            long start = positions.getStartPosition(unit, node);
+            if (start == Diagnostic.NOPOS) {
+                return SourceLocation.UNKNOWN;
+            }
+            return new SourceLocation(
+                    Long.toString(unit.getLineMap().getLineNumber(start)),
+                    Long.toString(unit.getLineMap().getColumnNumber(start)));
         }
+    }
+
+    static @Nullable MethodLineRange methodLineRange(CompilationUnitTree unit,
+                                                     MethodTree node,
+                                                     SourcePositions positions) {
+        if (node.getBody() == null) {
+            return null;
+        }
+        long start = positions.getStartPosition(unit, node);
+        long bodyEndExclusive = positions.getEndPosition(unit, node.getBody());
+        if (start == Diagnostic.NOPOS || bodyEndExclusive == Diagnostic.NOPOS) {
+            // Reports are line-based, so methods without compiler positions cannot be represented reliably.
+            return null;
+        }
+        return new MethodLineRange(
+                lineNumber(unit, start),
+                lineNumber(unit, Math.max(start, bodyEndExclusive - 1)));
+    }
+
+    private static int lineNumber(CompilationUnitTree unit, long position) {
+        return (int) unit.getLineMap().getLineNumber(position);
+    }
+
+    private static boolean isConstructor(MethodTree node) {
+        return node.getReturnType() == null;
+    }
+
+    record MethodLineRange(int startLine, int endLine) {
+    }
+
+    private record SourceLocation(String line, String column) {
+        private static final SourceLocation UNKNOWN = new SourceLocation("?", "?");
+
+        private String display() {
+            return line + ":" + column;
+        }
+    }
+
+    private record ClassContext(
+            String identitySegment,
+            String displaySegment,
+            String sourceSimpleName,
+            boolean contextual
+    ) {
     }
 
     private record MethodAnalysis(int cognitiveComplexity, List<MethodCall> calls) {
@@ -483,13 +609,17 @@ final class JavaMethodParser {
         return builder.toString();
     }
 
-    private static String formatDiagnostic(Diagnostic<? extends JavaFileObject> diagnostic) {
+    static String formatDiagnostic(Diagnostic<? extends JavaFileObject> diagnostic) {
         String sourceName = diagnostic.getSource() == null ? "<unknown>" : diagnostic.getSource().getName();
-        return "%s:%d:%d: %s".formatted(
+        return "%s:%s:%s: %s".formatted(
                 sourceName,
-                diagnostic.getLineNumber(),
-                diagnostic.getColumnNumber(),
+                diagnosticPosition(diagnostic.getLineNumber()),
+                diagnosticPosition(diagnostic.getColumnNumber()),
                 diagnostic.getMessage(Locale.ROOT));
+    }
+
+    private static String diagnosticPosition(long position) {
+        return position == Diagnostic.NOPOS ? "?" : Long.toString(position);
     }
 
     private static URI sourceUriForSourceName(String sourceName) {
