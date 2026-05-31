@@ -402,6 +402,20 @@ class JavaMethodParserTest {
         assertEquals(URI.create("string:///demo/Sample.java"), JavaMethodParser.sourceUri("demo.Sample.java"));
     }
 
+    @Test
+    void proxyDefaultValuesMatchPrimitiveReturnTypes() {
+        PrimitiveDefaults defaults = proxy(PrimitiveDefaults.class);
+
+        assertEquals(false, defaults.booleanValue());
+        assertEquals(Byte.valueOf((byte) 0), defaults.byteValue());
+        assertEquals(Short.valueOf((short) 0), defaults.shortValue());
+        assertEquals(Integer.valueOf(0), defaults.intValue());
+        assertEquals(Long.valueOf(0L), defaults.longValue());
+        assertEquals(Float.valueOf(0.0F), defaults.floatValue());
+        assertEquals(Double.valueOf(0.0D), defaults.doubleValue());
+        assertEquals(Character.valueOf('\0'), defaults.charValue());
+    }
+
     private static <T> T proxy(Class<T> type) {
         return proxy(type, "", new Object());
     }
@@ -420,15 +434,45 @@ class JavaMethodParserTest {
         if (type == boolean.class) {
             return false;
         }
-        if (type == byte.class || type == short.class || type == int.class || type == long.class) {
+        if (type == byte.class) {
+            return (byte) 0;
+        }
+        if (type == short.class) {
+            return (short) 0;
+        }
+        if (type == int.class) {
             return 0;
         }
-        if (type == float.class || type == double.class) {
-            return 0.0;
+        if (type == long.class) {
+            return 0L;
+        }
+        if (type == float.class) {
+            return 0.0F;
+        }
+        if (type == double.class) {
+            return 0.0D;
         }
         if (type == char.class) {
             return '\0';
         }
         return null;
+    }
+
+    private interface PrimitiveDefaults {
+        boolean booleanValue();
+
+        byte byteValue();
+
+        short shortValue();
+
+        int intValue();
+
+        long longValue();
+
+        float floatValue();
+
+        double doubleValue();
+
+        char charValue();
     }
 }
