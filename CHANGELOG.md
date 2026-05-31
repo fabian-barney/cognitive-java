@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.6.0 - 2026-06-01
+
+### Changed
+
+- Expanded Java parser coverage so constructors, compact record constructors, and methods in local or anonymous classes are included in reports and threshold checks.
+- Hardened parser diagnostics for positionless javac errors and preserved AST-based package parsing when package-like text appears in comments or strings.
+- Added granular CI quality gates for NullAway and SpotBugs across repository modules.
+
 ## 0.5.1 - 2026-05-24
 
 ### Added
