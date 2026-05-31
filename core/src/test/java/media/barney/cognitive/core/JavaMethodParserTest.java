@@ -96,6 +96,27 @@ class JavaMethodParserTest {
     }
 
     @Test
+    void constructorIdentityDoesNotCollideWithSameNamedMethods() {
+        String source = """
+                class Sample {
+                    Sample() {
+                        Sample();
+                    }
+
+                    void Sample() {
+                    }
+                }
+                """;
+
+        List<MethodDescriptor> methods = JavaMethodParser.parse("Sample", source);
+
+        assertEquals(List.of(
+                new MethodDescriptor("Sample", 2, 4, 0),
+                new MethodDescriptor("Sample", 6, 7, 0)
+        ), methods);
+    }
+
+    @Test
     void includesMethodsDeclaredInsideAnonymousClasses() {
         String source = """
                 class Sample {

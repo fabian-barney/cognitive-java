@@ -52,6 +52,8 @@ import org.jspecify.annotations.Nullable;
 
 final class JavaMethodParser {
 
+    private static final String CONSTRUCTOR_DECLARATION_NAME = "<init>";
+
     private JavaMethodParser() {
     }
 
@@ -180,7 +182,8 @@ final class JavaMethodParser {
 
             MethodLineRange lineRange = methodLineRange(unit, node, positions);
             String declarationName = declarationName(node);
-            String displayName = displayName(declarationName);
+            String displaySegment = displaySegment(node, declarationName);
+            String displayName = displayName(displaySegment);
             if (lineRange != null) {
                 MethodAnalysis analysis = MethodAnalysisScanner.analyze(node, currentClassName());
                 methods.add(new ParsedMethod(
@@ -197,7 +200,7 @@ final class JavaMethodParser {
                         analysis.calls()));
             }
 
-            displayContextSegments.addLast(declarationName);
+            displayContextSegments.addLast(displaySegment);
             methodContextDepth++;
             try {
                 return super.visitMethod(node, null);
@@ -249,17 +252,24 @@ final class JavaMethodParser {
 
         private String declarationName(MethodTree node) {
             if (isConstructor(node)) {
-                return currentSourceClassSimpleName();
+                return CONSTRUCTOR_DECLARATION_NAME;
             }
             return node.getName().toString();
         }
 
-        private String displayName(String declarationName) {
+        private String displaySegment(MethodTree node, String declarationName) {
+            if (isConstructor(node)) {
+                return currentSourceClassSimpleName();
+            }
+            return declarationName;
+        }
+
+        private String displayName(String displaySegment) {
             if (!requiresContextualMethodName()) {
-                return declarationName;
+                return displaySegment;
             }
             List<String> segments = new ArrayList<>(displayContextSegments);
-            segments.add(declarationName);
+            segments.add(displaySegment);
             return String.join(".", segments);
         }
 
