@@ -134,6 +134,63 @@ class CliApplicationTest {
     }
 
     @Test
+    void constructorsAndNestedClassMethodsFlowIntoThresholdAndJunitReports() throws Exception {
+        Path sourceRoot = tempDir.resolve("src/main/java/demo");
+        Files.createDirectories(sourceRoot);
+        Files.writeString(sourceRoot.resolve("Sample.java"), """
+                package demo;
+
+                class Sample {
+                    Sample(boolean value) {
+                        if (value) {
+                            if (value) {
+                            }
+                        }
+                    }
+
+                    int outer(boolean value) {
+                        class Local {
+                            int work() {
+                                if (value) {
+                                    if (value) {
+                                    }
+                                }
+                                return 1;
+                            }
+                        }
+                        Runnable runnable = new Runnable() {
+                            public void run() {
+                                if (value) {
+                                    if (value) {
+                                    }
+                                }
+                            }
+                        };
+                        return new Local().work();
+                    }
+                }
+                """);
+
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(new ByteArrayOutputStream()), new PrintStream(err))
+                .execute(new String[]{
+                        "--format=none",
+                        "--threshold=1",
+                        "--junit-report=reports/junit.xml",
+                        "src/main/java/demo/Sample.java"
+                });
+
+        assertEquals(2, exit);
+        assertTrue(utf8(err).contains("Cognitive Complexity threshold exceeded: 3 > 1"));
+        String junit = Files.readString(tempDir.resolve("reports/junit.xml"));
+        assertTrue(junit.contains("tests=\"4\""));
+        assertTrue(junit.contains("name=\"Sample:4\""));
+        assertTrue(junit.contains("Sample.outer.Local@12:9.work"));
+        assertTrue(junit.contains("Sample.outer.&lt;anonymous Runnable@21:44>.run"));
+    }
+
+    @Test
     void noneFormatWritesEmptyPrimaryFile() throws Exception {
         writeSimpleSource();
 

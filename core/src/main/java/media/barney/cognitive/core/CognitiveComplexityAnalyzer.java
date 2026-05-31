@@ -77,18 +77,16 @@ final class CognitiveComplexityAnalyzer {
     }
 
     static List<MethodMetrics> metricsForParsedMethods(List<ParsedMethod> parsedMethods) {
-        Set<String> recursiveMethodIds = recursiveMethodIds(parsedMethods);
+        Map<String, Integer> complexitiesByMethodId = complexitiesByMethodId(parsedMethods);
         List<MethodMetrics> metrics = new ArrayList<>(parsedMethods.size());
         for (ParsedMethod parsedMethod : parsedMethods) {
-            int cognitiveComplexity = parsedMethod.baseCognitiveComplexity()
-                    + (recursiveMethodIds.contains(parsedMethod.id()) ? 1 : 0);
             metrics.add(new MethodMetrics(
-                    parsedMethod.methodName(),
+                    parsedMethod.displayName(),
                     parsedMethod.className(),
                     parsedMethod.sourcePath(),
                     parsedMethod.startLine(),
                     parsedMethod.endLine(),
-                    cognitiveComplexity));
+                    Objects.requireNonNull(complexitiesByMethodId.get(parsedMethod.id()))));
         }
         metrics.sort(Comparator
                 .comparingInt(MethodMetrics::cognitiveComplexity)
@@ -97,6 +95,17 @@ final class CognitiveComplexityAnalyzer {
                 .thenComparing(MethodMetrics::methodName)
                 .thenComparingInt(MethodMetrics::startLine));
         return metrics;
+    }
+
+    static Map<String, Integer> complexitiesByMethodId(List<ParsedMethod> parsedMethods) {
+        Set<String> recursiveMethodIds = recursiveMethodIds(parsedMethods);
+        Map<String, Integer> complexities = new LinkedHashMap<>();
+        for (ParsedMethod parsedMethod : parsedMethods) {
+            int cognitiveComplexity = parsedMethod.baseCognitiveComplexity()
+                    + (recursiveMethodIds.contains(parsedMethod.id()) ? 1 : 0);
+            complexities.put(parsedMethod.id(), cognitiveComplexity);
+        }
+        return complexities;
     }
 
     private static Set<String> recursiveMethodIds(List<ParsedMethod> parsedMethods) {
