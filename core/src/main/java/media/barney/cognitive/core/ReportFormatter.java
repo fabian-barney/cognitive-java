@@ -343,7 +343,7 @@ final class ReportFormatter {
     }
 
     private static String testcaseName(CognitiveReport.MethodReport method) {
-        return String.format("%s:%d [CC=%d]", method.methodName(), method.startLine(), method.complexity());
+        return String.format(Locale.ROOT, "%s:%d [CC=%d]", method.methodName(), method.startLine(), method.complexity());
     }
 
     private static String junitDiagnosticText(CognitiveReport.MethodReport method, int threshold) {
