@@ -185,7 +185,7 @@ class CliApplicationTest {
         assertTrue(utf8(err).contains("Cognitive Complexity threshold exceeded: 3 > 1"));
         String junit = Files.readString(tempDir.resolve("reports/junit.xml"));
         assertTrue(junit.contains("tests=\"4\""));
-        assertTrue(junit.contains("name=\"Sample:4\""));
+        assertTrue(junit.contains("name=\"Sample:4 [CC=3]\""));
         assertTrue(junit.contains("Sample.outer.Local@12:9.work"));
         assertTrue(junit.contains("Sample.outer.&lt;anonymous Runnable@21:44>.run"));
     }

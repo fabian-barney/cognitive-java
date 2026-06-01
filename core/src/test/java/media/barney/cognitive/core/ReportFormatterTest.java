@@ -61,8 +61,13 @@ class ReportFormatterTest {
         assertTrue(report.contains("time=\"0.250000\""));
         assertTrue(report.contains("classname=\"demo.High\""));
         assertTrue(report.contains("file=\"src/main/java/demo/High.java\""));
+        assertTrue(report.contains("name=\"high:4 [CC=16]\""));
+        assertTrue(report.contains("name=\"low:4 [CC=2]\""));
+        assertTrue(report.contains("<system-out>Cognitive Complexity: 16"));
+        assertTrue(report.contains("<system-out>Cognitive Complexity: 2"));
         assertTrue(report.contains("Cognitive Complexity threshold exceeded: 16 > 15"));
         assertTrue(report.contains("Source: src/main/java/demo/High.java:4-8"));
+        assertTrue(report.contains("<property name=\"status\" value=\"failed\"/>"));
     }
 
     @Test
