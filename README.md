@@ -64,6 +64,8 @@ java -jar cognitive-java-cli-<version>.jar --exclude 'module-a/**' --exclude-cla
 - `--agent` defaults the primary report to `toon`, failures-only, and omit-redundancy unless explicitly overridden
 - `--failures-only` and `--omit-redundancy` affect only the primary report
 - `--junit-report` always writes the complete unfiltered JUnit sidecar
+- JUnit testcases include GitLab-visible metric details in `name` as
+  `method:lineStart [CC=complexity]` and in testcase-level `system-out`
 - `--format none` suppresses primary stdout output and writes an empty primary file if `--output` is set
 - Machine-readable reports expose top-level `status` and `threshold`
 - Method entries use `status`, `cc`, `method`, `src`, `lineStart`, and `lineEnd`

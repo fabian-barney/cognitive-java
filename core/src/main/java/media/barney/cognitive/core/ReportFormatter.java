@@ -286,6 +286,7 @@ final class ReportFormatter {
                                                int threshold,
                                                boolean omitRedundancy,
                                                String time) {
+        String diagnosticText = junitDiagnosticText(method, threshold);
         return new JunitTestCase(
                 method.className(),
                 testcaseName(method),
@@ -293,7 +294,8 @@ final class ReportFormatter {
                 method.startLine(),
                 time,
                 junitProperties(method, omitRedundancy),
-                junitFailure(method, threshold)
+                diagnosticText,
+                junitFailure(method, threshold, diagnosticText)
         );
     }
 
@@ -313,13 +315,15 @@ final class ReportFormatter {
         return new JunitProperties(properties);
     }
 
-    private static @Nullable JunitFailure junitFailure(CognitiveReport.MethodReport method, int threshold) {
+    private static @Nullable JunitFailure junitFailure(CognitiveReport.MethodReport method,
+                                                       int threshold,
+                                                       String diagnosticText) {
         if (method.status() != MethodStatus.FAILED) {
             return null;
         }
         String message = "Cognitive Complexity threshold exceeded: "
                 + method.complexity() + " > " + threshold;
-        return new JunitFailure(message, "cognitive-java.threshold", junitDiagnosticText(method, threshold));
+        return new JunitFailure(message, "cognitive-java.threshold", diagnosticText);
     }
 
     private static String writeXml(JunitTestSuites testSuites) {
@@ -339,7 +343,7 @@ final class ReportFormatter {
     }
 
     private static String testcaseName(CognitiveReport.MethodReport method) {
-        return method.methodName() + ":" + method.startLine();
+        return String.format(Locale.ROOT, "%s:%d [CC=%d]", method.methodName(), method.startLine(), method.complexity());
     }
 
     private static String junitDiagnosticText(CognitiveReport.MethodReport method, int threshold) {
@@ -439,6 +443,7 @@ final class ReportFormatter {
             @JacksonXmlProperty(isAttribute = true) int line,
             @JacksonXmlProperty(isAttribute = true) String time,
             @JacksonXmlProperty(localName = "properties") JunitProperties properties,
+            @JacksonXmlProperty(localName = "system-out") String systemOut,
             @Nullable JunitFailure failure
     ) {
     }
