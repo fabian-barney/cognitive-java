@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -419,13 +420,13 @@ class CognitiveJavaGradlePluginFunctionalTest {
 
     private void writeFile(String relativePath, String content) throws IOException {
         Path file = tempDir.resolve(relativePath);
-        Files.createDirectories(file.getParent());
+        Files.createDirectories(parentOf(file));
         Files.writeString(file, content);
     }
 
     private void assumeHardLinksAvailable(Path directory) throws Exception {
         Path target = Files.createTempFile(directory, ".cognitive-java-hard-link-target-", ".tmp");
-        Path link = target.resolveSibling(target.getFileName() + ".link");
+        Path link = target.resolveSibling(fileNameOf(target) + ".link");
         try {
             Files.createLink(link, target);
         } catch (UnsupportedOperationException | IOException | SecurityException exception) {
@@ -439,9 +440,17 @@ class CognitiveJavaGradlePluginFunctionalTest {
     private List<String> reportFileNames(String relativePath) throws IOException {
         try (var files = Files.list(tempDir.resolve(relativePath))) {
             return files
-                    .map(path -> path.getFileName().toString())
+                    .map(path -> fileNameOf(path).toString())
                     .sorted(Comparator.naturalOrder())
                     .toList();
         }
+    }
+
+    private Path parentOf(Path path) {
+        return Objects.requireNonNull(path.getParent(), () -> "Expected parent path for " + path);
+    }
+
+    private Path fileNameOf(Path path) {
+        return Objects.requireNonNull(path.getFileName(), () -> "Expected file name for " + path);
     }
 }

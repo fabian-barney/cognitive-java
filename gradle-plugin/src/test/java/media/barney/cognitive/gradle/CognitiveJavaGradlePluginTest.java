@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -361,7 +362,7 @@ class CognitiveJavaGradlePluginTest {
         Files.createDirectories(realSourceRoot);
         Path linkedSourceRoot = Files.createSymbolicLink(projectRoot.resolve("linked-source-root"), realSourceRoot);
         CognitiveJavaCheckTask task = newCheckTask(projectRoot);
-        task.getSourceRoots().set(List.of(linkedSourceRoot.getFileName().toString()));
+        task.getSourceRoots().set(List.of(fileNameOf(linkedSourceRoot).toString()));
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
@@ -373,7 +374,7 @@ class CognitiveJavaGradlePluginTest {
         Path projectRoot = tempDir.toRealPath();
         Project project = ProjectBuilder.builder().withProjectDir(projectRoot.toFile()).build();
         Path source = projectRoot.resolve("src/main/java/demo/Sample.java");
-        Files.createDirectories(source.getParent());
+        Files.createDirectories(parentOf(source));
         Files.writeString(source, """
                 package demo;
 
@@ -486,7 +487,7 @@ class CognitiveJavaGradlePluginTest {
         Path projectRoot = tempDir.toRealPath();
         assumeHardLinksAvailable(projectRoot);
         Path target = projectRoot.resolve("build/reports/cognitive-java/collision.xml");
-        Files.createDirectories(target.getParent());
+        Files.createDirectories(parentOf(target));
         Files.writeString(target, "existing");
         Path alias = target.resolveSibling("collision-alias.xml");
         Files.createLink(alias, target);
@@ -518,7 +519,7 @@ class CognitiveJavaGradlePluginTest {
         Path projectRoot = tempDir.toRealPath();
         CognitiveJavaCheckTask task = newCheckTask(projectRoot);
         task.getFormat().set("json");
-        task.getOutput().fileValue(projectRoot.getRoot().toFile());
+        task.getOutput().fileValue(rootOf(projectRoot).toFile());
 
         GradleException exception = assertThrows(GradleException.class, task::runCheck);
 
@@ -571,7 +572,7 @@ class CognitiveJavaGradlePluginTest {
         Path analysisRoot = projectRoot.resolve("analysis");
         Files.createDirectories(analysisRoot);
         Path source = analysisRoot.resolve("src/main/java/demo/Sample.java");
-        Files.createDirectories(source.getParent());
+        Files.createDirectories(parentOf(source));
         Files.writeString(source, sampleSource());
         CognitiveJavaCheckTask task = newCheckTask(projectRoot);
         task.getAnalysisRoot().fileValue(analysisRoot.toFile());
@@ -601,7 +602,7 @@ class CognitiveJavaGradlePluginTest {
         Path projectRoot = tempDir.toRealPath();
         assumeTrue(!isWindows(), "This alias test requires filesystem symlinks");
         Path statePath = projectRoot.resolve(".gradle/cognitive-java/root/other-task/primary-output.path");
-        Files.createDirectories(statePath.getParent());
+        Files.createDirectories(parentOf(statePath));
         Files.writeString(statePath, "state");
         Path alias = Files.createSymbolicLink(projectRoot.resolve("state-report.xml"), statePath);
         CognitiveJavaCheckTask task = newCheckTask(projectRoot);
@@ -700,7 +701,7 @@ class CognitiveJavaGradlePluginTest {
         Path output = projectRoot.resolve("build/reports/cognitive-java/report.json");
         Path junit = projectRoot.resolve("build/reports/cognitive-java/report.xml");
         Object missing = invoke(task, "reportSnapshot", new Class<?>[]{Path.class}, new Object[]{null});
-        Files.createDirectories(output.getParent());
+        Files.createDirectories(parentOf(output));
         Files.writeString(output, "{}");
         Files.writeString(junit, "<testsuites/>");
 
@@ -719,7 +720,7 @@ class CognitiveJavaGradlePluginTest {
         CognitiveJavaCheckTask task = newCheckTask(projectRoot);
         Path oldOutput = projectRoot.resolve("build/reports/cognitive-java/old-report.json");
         Path newOutput = projectRoot.resolve("build/reports/cognitive-java/new-report.json");
-        Files.createDirectories(oldOutput.getParent());
+        Files.createDirectories(parentOf(oldOutput));
         Files.writeString(oldOutput, "{}");
         invoke(task, "rememberOutputPath", new Class<?>[]{Path.class}, new Object[]{oldOutput});
         String rememberedState = Files.readString(outputStatePath(task));
@@ -739,7 +740,7 @@ class CognitiveJavaGradlePluginTest {
         Path projectRoot = tempDir.toRealPath();
         assumeHardLinksAvailable(projectRoot);
         Path report = projectRoot.resolve("build/reports/cognitive-java/report.json");
-        Files.createDirectories(report.getParent());
+        Files.createDirectories(parentOf(report));
         Files.writeString(report, "{}");
         CognitiveJavaCheckTask firstTask = newCheckTask(projectRoot, "first-cognitive-java-check");
         CognitiveJavaCheckTask secondTask = newCheckTask(projectRoot, "second-cognitive-java-check");
@@ -824,7 +825,7 @@ class CognitiveJavaGradlePluginTest {
 
     private Path writeSource(Path projectRoot) throws IOException {
         Path source = projectRoot.resolve("src/main/java/demo/Sample.java");
-        Files.createDirectories(source.getParent());
+        Files.createDirectories(parentOf(source));
         Files.writeString(source, sampleSource());
         return source;
     }
@@ -858,7 +859,7 @@ class CognitiveJavaGradlePluginTest {
 
     private void assumeHardLinksAvailable(Path directory) throws Exception {
         Path target = Files.createTempFile(directory, ".cognitive-java-hard-link-target-", ".tmp");
-        Path link = target.resolveSibling(target.getFileName() + ".link");
+        Path link = target.resolveSibling(fileNameOf(target) + ".link");
         try {
             Files.createLink(link, target);
         } catch (UnsupportedOperationException | IOException | SecurityException exception) {
@@ -924,21 +925,6 @@ class CognitiveJavaGradlePluginTest {
                                   Class<?> firstParameterType,
                                   Object firstArgument,
                                   Class<?> secondParameterType,
-                                  Object secondArgument) throws Exception {
-        Method method = CognitiveJavaCheckTask.class.getDeclaredMethod(
-                methodName,
-                firstParameterType,
-                secondParameterType
-        );
-        method.setAccessible(true);
-        return (boolean) method.invoke(task, firstArgument, secondArgument);
-    }
-
-    private boolean invokeBoolean(CognitiveJavaCheckTask task,
-                                  String methodName,
-                                  Class<?> firstParameterType,
-                                  Object firstArgument,
-                                  Class<?> secondParameterType,
                                   Object secondArgument,
                                   Class<?> thirdParameterType,
                                   Object thirdArgument) throws Exception {
@@ -959,5 +945,17 @@ class CognitiveJavaGradlePluginTest {
         Method method = CognitiveJavaCheckTask.class.getDeclaredMethod(methodName, parameterTypes);
         method.setAccessible(true);
         return method.invoke(task, arguments);
+    }
+
+    private Path parentOf(Path path) {
+        return Objects.requireNonNull(path.getParent(), () -> "Expected parent path for " + path);
+    }
+
+    private Path fileNameOf(Path path) {
+        return Objects.requireNonNull(path.getFileName(), () -> "Expected file name for " + path);
+    }
+
+    private Path rootOf(Path path) {
+        return Objects.requireNonNull(path.getRoot(), () -> "Expected filesystem root for " + path);
     }
 }

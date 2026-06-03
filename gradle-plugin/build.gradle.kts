@@ -75,7 +75,7 @@ val mavenCentralTokenPassword = providers.gradleProperty("mavenCentralTokenPassw
     .orElse(providers.environmentVariable("MAVEN_CENTRAL_TOKEN_PASSWORD"))
 
 jacoco {
-    toolVersion = "0.8.13"
+    toolVersion = "0.8.14"
 }
 
 spotbugs {
