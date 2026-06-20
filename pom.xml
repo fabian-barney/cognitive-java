@@ -61,6 +61,7 @@
     <maven.javadoc.plugin.version>3.12.0</maven.javadoc.plugin.version>
     <maven.gpg.plugin.version>3.2.8</maven.gpg.plugin.version>
     <central.publishing.plugin.version>0.10.0</central.publishing.plugin.version>
+    <central.deployment.repository.name>cognitive-java</central.deployment.repository.name>
     <central.skipPublishing>false</central.skipPublishing>
   </properties>
 
@@ -395,6 +396,7 @@
             <extensions>true</extensions>
             <configuration>
               <publishingServerId>central</publishingServerId>
+              <deploymentName>${project.groupId}:${central.deployment.repository.name}:${project.version}</deploymentName>
               <autoPublish>true</autoPublish>
               <waitUntil>published</waitUntil>
               <skipPublishing>${central.skipPublishing}</skipPublishing>
