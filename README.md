@@ -2,7 +2,7 @@
 
 `cognitive-java` is a static Cognitive Complexity toolkit for Java projects.
 
-It analyzes Java source without running tests, generating coverage, or reading JaCoCo reports. By default it fails when any analyzed method exceeds the Cognitive Complexity threshold of `15`.
+It analyzes Java source without running tests, generating coverage, or reading JaCoCo reports. By default it fails when any analyzed method exceeds the Cognitive Complexity threshold of `8`.
 
 ## Modules
 

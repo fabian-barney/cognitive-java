@@ -14,7 +14,7 @@ class CliArgumentsParserTest {
 
         assertEquals(CliMode.ALL_SRC, args.mode());
         assertEquals(ReportFormat.TOON, args.reportFormat());
-        assertEquals(15, args.threshold());
+        assertEquals(8, args.threshold());
         assertEquals(List.of(), args.fileArgs());
         assertEquals(List.of(), args.sourceRoots());
         assertEquals(List.of(), args.exclusionOptions().excludes());

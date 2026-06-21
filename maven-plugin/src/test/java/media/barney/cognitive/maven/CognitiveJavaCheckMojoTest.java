@@ -65,7 +65,7 @@ class CognitiveJavaCheckMojoTest {
                 "--format",
                 "none",
                 "--threshold",
-                "15",
+                "8",
                 "--junit-report",
                 root.resolve("target/cognitive-java/TEST-cognitive-java.xml").toString()
         ), List.of(runner.args));
@@ -86,7 +86,7 @@ class CognitiveJavaCheckMojoTest {
         setField(mojo, "omitRedundancy", "true");
         setField(mojo, "output", output.toFile());
         setField(mojo, "junitReport", root.resolve("target/cognitive-java/custom-junit.xml").toFile());
-        setField(mojo, "threshold", "9");
+        setField(mojo, "threshold", "15");
 
         mojo.execute();
 
@@ -99,7 +99,7 @@ class CognitiveJavaCheckMojoTest {
                 "--output",
                 output.toString(),
                 "--threshold",
-                "9",
+                "15",
                 "--junit-report",
                 root.resolve("target/cognitive-java/custom-junit.xml").toString()
         ), List.of(runner.args));
@@ -147,7 +147,7 @@ class CognitiveJavaCheckMojoTest {
                 "com.acme.Generated",
                 "--use-default-exclusions=false",
                 "--threshold",
-                "15",
+                "8",
                 "--junit-report",
                 root.resolve("target/cognitive-java/TEST-cognitive-java.xml").toString()
         ), List.of(runner.args));
@@ -176,7 +176,7 @@ class CognitiveJavaCheckMojoTest {
                 "--source-root",
                 "module-a/generated/java",
                 "--threshold",
-                "15",
+                "8",
                 "--junit-report",
                 root.resolve("target/cognitive-java/TEST-cognitive-java.xml").toString()
         ), List.of(runner.args));
@@ -195,7 +195,7 @@ class CognitiveJavaCheckMojoTest {
 
         mojo.execute();
 
-        assertEquals(List.of("--format", "none", "--threshold", "15"), List.of(runner.args));
+        assertEquals(List.of("--format", "none", "--threshold", "8"), List.of(runner.args));
     }
 
     @Test
@@ -218,7 +218,7 @@ class CognitiveJavaCheckMojoTest {
                 "--output",
                 root.resolve("target/cognitive-java/report.json").toString(),
                 "--threshold",
-                "15",
+                "8",
                 "--junit-report",
                 root.resolve("target/cognitive-java/custom-junit.xml").toString()
         ), List.of(runner.args));

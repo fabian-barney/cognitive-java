@@ -2,7 +2,7 @@ package media.barney.cognitive.core;
 
 final class Thresholds {
 
-    static final int DEFAULT = 15;
+    static final int DEFAULT = 8;
 
     private Thresholds() {
     }

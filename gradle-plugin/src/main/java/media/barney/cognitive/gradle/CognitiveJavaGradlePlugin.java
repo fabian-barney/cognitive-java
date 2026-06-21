@@ -12,7 +12,7 @@ import java.util.List;
 
 public class CognitiveJavaGradlePlugin implements Plugin<Project> {
 
-    private static final int DEFAULT_THRESHOLD = 15;
+    private static final int DEFAULT_THRESHOLD = 8;
 
     @Override
     public void apply(Project project) {

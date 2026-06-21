@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Reduced the default Cognitive Complexity threshold from `15` to `8`.
+
 ## 0.6.0 - 2026-06-01
 
 ### Changed

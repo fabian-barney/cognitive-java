@@ -478,7 +478,7 @@ class CliApplicationTest {
     }
 
     @Test
-    void thresholdFailureUsesCognitiveComplexityLimitFifteen() throws Exception {
+    void thresholdFailureUsesDefaultCognitiveComplexityLimit() throws Exception {
         Path sourceRoot = tempDir.resolve("src/main/java/demo");
         Files.createDirectories(sourceRoot);
         Files.writeString(sourceRoot.resolve("Sample.java"), nestedIfSource(7));
@@ -491,11 +491,13 @@ class CliApplicationTest {
 
         assertEquals(2, exit);
         assertTrue(utf8(out).contains("alpha"));
-        assertTrue(utf8(err).contains("Cognitive Complexity threshold exceeded: 28 > 15"));
+        assertTrue(utf8(err).contains("Cognitive Complexity threshold exceeded: 28 > 8"));
     }
 
     @Test
-    void thresholdExceededIsStrictlyGreaterThanFifteen() {
+    void thresholdExceededUsesStrictlyGreaterThanConfiguredValue() {
+        assertFalse(CliApplication.thresholdExceeded(8, 8));
+        assertTrue(CliApplication.thresholdExceeded(9, 8));
         assertFalse(CliApplication.thresholdExceeded(15, 15));
         assertTrue(CliApplication.thresholdExceeded(16, 15));
     }

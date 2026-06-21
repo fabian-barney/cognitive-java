@@ -47,7 +47,7 @@ class CognitiveJavaGradlePluginTest {
 
         assertEquals("verification", checkTask.getGroup());
         assertEquals("Runs the cognitive-java Cognitive Complexity gate.", checkTask.getDescription());
-        assertEquals(15, extension.getThreshold().get());
+        assertEquals(8, extension.getThreshold().get());
         assertFalse(extension.getAgent().get());
         assertFalse(extension.getFormat().isPresent());
         assertFalse(extension.getFailuresOnly().isPresent());
@@ -62,7 +62,7 @@ class CognitiveJavaGradlePluginTest {
         assertEquals(List.of(), extension.getExcludeClasses().get());
         assertEquals(List.of(), extension.getExcludeAnnotations().get());
         assertTrue(extension.getUseDefaultExclusions().get());
-        assertEquals(15, checkTask.getThreshold().get());
+        assertEquals(8, checkTask.getThreshold().get());
         assertFalse(checkTask.getAgent().get());
         assertEquals("none", checkTask.getFormat().get());
         assertFalse(checkTask.getFailuresOnly().get());
@@ -94,7 +94,7 @@ class CognitiveJavaGradlePluginTest {
         CognitiveJavaExtension extension = project.getExtensions().getByType(CognitiveJavaExtension.class);
         Path output = tempDir.resolve("build/reports/cognitive-java/report.json");
         Path junitReport = tempDir.resolve("build/reports/cognitive-java/custom-junit.xml");
-        extension.getThreshold().set(9);
+        extension.getThreshold().set(15);
         extension.getFormat().set("json");
         extension.getAgent().set(true);
         extension.getFailuresOnly().set(false);
@@ -111,7 +111,7 @@ class CognitiveJavaGradlePluginTest {
         CognitiveJavaCheckTask checkTask =
                 (CognitiveJavaCheckTask) project.getTasks().getByName("cognitive-java-check");
 
-        assertEquals(9, checkTask.getThreshold().get());
+        assertEquals(15, checkTask.getThreshold().get());
         assertEquals("json", checkTask.getFormat().get());
         assertTrue(checkTask.getAgent().get());
         assertFalse(checkTask.getFailuresOnly().get());
@@ -134,7 +134,7 @@ class CognitiveJavaGradlePluginTest {
         CognitiveJavaCheckTask checkTask =
                 project.getTasks().register("custom-cognitive-java-check", CognitiveJavaCheckTask.class).get();
 
-        assertEquals(15, checkTask.getThreshold().get());
+        assertEquals(8, checkTask.getThreshold().get());
         assertFalse(checkTask.getAgent().get());
         assertEquals("none", checkTask.getFormat().get());
         assertFalse(checkTask.getFailuresOnly().get());
