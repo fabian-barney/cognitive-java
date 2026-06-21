@@ -127,21 +127,28 @@ final class CliApplication {
                 : AnalysisSourceRoots.resolveConfiguredSourceRoots(projectRoot, sourceRoots);
         Set<Path> files = new LinkedHashSet<>();
         for (String arg : args) {
-            Path path = AnalysisSourceRoots.resolveExplicitPath(projectRoot, arg);
-            if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
-                if (configuredSourceRoots.isEmpty()) {
-                    files.addAll(SourceFileFinder.findAllJavaFilesUnderSourceRoots(path));
-                } else {
-                    files.addAll(SourceFileFinder.findJavaFilesUnderConfiguredDirectory(path, configuredSourceRoots));
-                }
-            } else {
-                ensureExplicitFileInsideConfiguredSourceRoots(path, configuredSourceRoots, arg);
-                files.add(path.toAbsolutePath().normalize());
-            }
+            addExplicitPath(files, arg, configuredSourceRoots);
         }
         List<Path> sorted = new ArrayList<>(files);
         sorted.sort(Comparator.naturalOrder());
         return sorted;
+    }
+
+    private void addExplicitPath(Set<Path> files, String configuredPath, List<Path> configuredSourceRoots)
+            throws Exception {
+        Path path = AnalysisSourceRoots.resolveExplicitPath(projectRoot, configuredPath);
+        if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+            files.addAll(explicitDirectoryFiles(path, configuredSourceRoots));
+            return;
+        }
+        ensureExplicitFileInsideConfiguredSourceRoots(path, configuredSourceRoots, configuredPath);
+        files.add(path.toAbsolutePath().normalize());
+    }
+
+    private static List<Path> explicitDirectoryFiles(Path path, List<Path> configuredSourceRoots) throws Exception {
+        return configuredSourceRoots.isEmpty()
+                ? SourceFileFinder.findAllJavaFilesUnderSourceRoots(path)
+                : SourceFileFinder.findJavaFilesUnderConfiguredDirectory(path, configuredSourceRoots);
     }
 
     private static void ensureExplicitFileInsideConfiguredSourceRoots(

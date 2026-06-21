@@ -30,11 +30,7 @@ final class CognitiveComplexityAnalyzer {
         List<ParsedMethod> parsedMethods = new ArrayList<>();
         Path root = projectRoot.toAbsolutePath().normalize();
         for (Path file : files) {
-            Path normalized = file.toAbsolutePath().normalize();
-            if (!Files.isRegularFile(normalized)) {
-                throw new IllegalArgumentException("Source file does not exist: " + normalized);
-            }
-            parsedMethods.addAll(JavaMethodParser.parseDetailed(sourceName(root, normalized), Files.readString(normalized)));
+            parsedMethods.addAll(parseDetailed(root, file));
         }
         return metricsForParsedMethods(parsedMethods);
     }
@@ -47,25 +43,47 @@ final class CognitiveComplexityAnalyzer {
         Set<String> excludedClasses = new LinkedHashSet<>();
         Path root = projectRoot.toAbsolutePath().normalize();
         for (Path file : files) {
-            Path normalized = file.toAbsolutePath().normalize();
-            if (!Files.isRegularFile(normalized)) {
-                throw new IllegalArgumentException("Source file does not exist: " + normalized);
-            }
-            for (ParsedMethod parsedMethod : JavaMethodParser.parseDetailed(sourceName(root, normalized), Files.readString(normalized))) {
-                Optional<String> classExclusion = exclusions.classExclusionReason(
-                        parsedMethod.className(),
-                        parsedMethod.classAnnotations());
-                if (classExclusion.isPresent()) {
-                    if (excludedClasses.add(parsedMethod.className())) {
-                        audit.recordExcludedClass(classExclusion.get());
-                    }
-                    continue;
-                }
-                includedMethods.add(parsedMethod);
-            }
+            addIncludedMethods(includedMethods, parseDetailed(root, file), exclusions, audit, excludedClasses);
         }
         audit.recordAnalyzedMethods(includedMethods.size());
         return metricsForParsedMethods(includedMethods);
+    }
+
+    private static List<ParsedMethod> parseDetailed(Path root, Path file) throws IOException {
+        Path normalized = file.toAbsolutePath().normalize();
+        if (!Files.isRegularFile(normalized)) {
+            throw new IllegalArgumentException("Source file does not exist: " + normalized);
+        }
+        return JavaMethodParser.parseDetailed(sourceName(root, normalized), Files.readString(normalized));
+    }
+
+    private static void addIncludedMethods(List<ParsedMethod> includedMethods,
+                                           List<ParsedMethod> parsedMethods,
+                                           SourceExclusionMatcher exclusions,
+                                           SourceExclusionAudit.Builder audit,
+                                           Set<String> excludedClasses) {
+        for (ParsedMethod parsedMethod : parsedMethods) {
+            if (recordExcludedClass(parsedMethod, exclusions, audit, excludedClasses)) {
+                continue;
+            }
+            includedMethods.add(parsedMethod);
+        }
+    }
+
+    private static boolean recordExcludedClass(ParsedMethod parsedMethod,
+                                               SourceExclusionMatcher exclusions,
+                                               SourceExclusionAudit.Builder audit,
+                                               Set<String> excludedClasses) {
+        Optional<String> classExclusion = exclusions.classExclusionReason(
+                parsedMethod.className(),
+                parsedMethod.classAnnotations());
+        if (classExclusion.isEmpty()) {
+            return false;
+        }
+        if (excludedClasses.add(parsedMethod.className())) {
+            audit.recordExcludedClass(classExclusion.get());
+        }
+        return true;
     }
 
     static List<MethodMetrics> analyzeSources(Map<String, String> sources) {

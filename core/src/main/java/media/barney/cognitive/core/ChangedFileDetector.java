@@ -123,28 +123,37 @@ final class ChangedFileDetector {
         List<Path> files = new ArrayList<>();
         int index = 0;
         while (index < output.length) {
-            if (index + 3 >= output.length) {
-                throw new IOException("Unexpected git status output");
-            }
-            char indexStatus = (char) output[index];
-            char workTreeStatus = (char) output[index + 1];
-            if (output[index + 2] != ' ') {
-                throw new IOException("Unexpected git status output");
-            }
-            int pathStart = index + 3;
-            int pathEnd = nextNullIndex(output, pathStart);
-            String path = new String(output, pathStart, pathEnd - pathStart, StandardCharsets.UTF_8);
-            index = pathEnd + 1;
-
-            if (isRenameOrCopy(indexStatus, workTreeStatus)) {
-                index = nextNullIndex(output, index) + 1;
-            }
-
-            if (isRelevantStatus(indexStatus, workTreeStatus) && isJavaPath(path)) {
-                files.add(root.resolve(path).normalize());
-            }
+            StatusEntry entry = statusEntry(output, index);
+            index = nextStatusIndex(output, entry);
+            addRelevantStatusPath(root, files, entry);
         }
         return files;
+    }
+
+    private static StatusEntry statusEntry(byte[] output, int index) throws IOException {
+        if (index + 3 >= output.length || output[index + 2] != ' ') {
+            throw new IOException("Unexpected git status output");
+        }
+        int pathStart = index + 3;
+        int pathEnd = nextNullIndex(output, pathStart);
+        return new StatusEntry(
+                (char) output[index],
+                (char) output[index + 1],
+                new String(output, pathStart, pathEnd - pathStart, StandardCharsets.UTF_8),
+                pathEnd + 1);
+    }
+
+    private static int nextStatusIndex(byte[] output, StatusEntry entry) throws IOException {
+        if (!isRenameOrCopy(entry.indexStatus(), entry.workTreeStatus())) {
+            return entry.nextIndex();
+        }
+        return nextNullIndex(output, entry.nextIndex()) + 1;
+    }
+
+    private static void addRelevantStatusPath(Path root, List<Path> files, StatusEntry entry) {
+        if (isRelevantStatus(entry.indexStatus(), entry.workTreeStatus()) && isJavaPath(entry.path())) {
+            files.add(root.resolve(entry.path()).normalize());
+        }
     }
 
     private static boolean isRegularFileWithoutFollowingLinks(Path path) {
@@ -165,6 +174,9 @@ final class ChangedFileDetector {
                 || indexStatus == 'C'
                 || workTreeStatus == 'R'
                 || workTreeStatus == 'C';
+    }
+
+    private record StatusEntry(char indexStatus, char workTreeStatus, String path, int nextIndex) {
     }
 
     private static boolean isRelevantStatus(char indexStatus, char workTreeStatus) {
