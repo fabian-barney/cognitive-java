@@ -15,7 +15,7 @@ class ReportFormatterTest {
 
         assertTrue(report.contains("Cognitive Complexity Report"));
         assertTrue(report.contains("Status: failed"));
-        assertTrue(report.contains("Threshold: 15"));
+        assertTrue(report.contains("Threshold: 8"));
         assertTrue(report.contains("failed"));
         assertTrue(report.contains("src/main/java/demo/High.java"));
         assertTrue(report.contains("src/main/java/demo/Low.java"));
@@ -27,7 +27,7 @@ class ReportFormatterTest {
         String report = ReportFormatter.format(report(), ReportFormat.JSON);
 
         assertTrue(report.contains("\"status\": \"failed\""));
-        assertTrue(report.contains("\"threshold\": 15"));
+        assertTrue(report.contains("\"threshold\": 8"));
         assertTrue(report.contains("\"cc\": 16"));
         assertTrue(report.contains("\"method\": \"high\""));
         assertTrue(report.contains("\"src\": \"src/main/java/demo/High.java\""));
@@ -65,7 +65,7 @@ class ReportFormatterTest {
         assertTrue(report.contains("name=\"low:4 [CC=2]\""));
         assertTrue(report.contains("<system-out>Cognitive Complexity: 16"));
         assertTrue(report.contains("<system-out>Cognitive Complexity: 2"));
-        assertTrue(report.contains("Cognitive Complexity threshold exceeded: 16 > 15"));
+        assertTrue(report.contains("Cognitive Complexity threshold exceeded: 16 > 8"));
         assertTrue(report.contains("Source: src/main/java/demo/High.java:4-8"));
         assertTrue(report.contains("<property name=\"status\" value=\"failed\"/>"));
     }
@@ -106,7 +106,7 @@ class ReportFormatterTest {
         return CognitiveReport.from(List.of(
                 metric("high", "demo.High", "src/main/java/demo/High.java", 4, 8, 16),
                 metric("low", "demo.Low", "src/main/java/demo/Low.java", 4, 6, 2)
-        ), 15).withElapsedNanos(250_000_000);
+        ), 8).withElapsedNanos(250_000_000);
     }
 
     private static MethodMetrics metric(String methodName,

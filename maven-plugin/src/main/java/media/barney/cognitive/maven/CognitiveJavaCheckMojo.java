@@ -53,8 +53,8 @@ public class CognitiveJavaCheckMojo extends AbstractMojo {
     @Parameter(property = "cognitiveJava.junitReport")
     private @Nullable File junitReport;
 
-    @Parameter(property = "cognitiveJava.threshold", defaultValue = "15")
-    private String threshold = "15";
+    @Parameter(property = "cognitiveJava.threshold", defaultValue = "8")
+    private String threshold = "8";
 
     @Parameter
     private List<String> sourceRoots = new ArrayList<>();

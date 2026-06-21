@@ -56,7 +56,7 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
 
     private static final String LINK_OWNERSHIP = "link";
     private static final String ENCODED_PATH_PREFIX = "path-base64\t";
-    private static final int DEFAULT_THRESHOLD = 15;
+    private static final int DEFAULT_THRESHOLD = 8;
     private static final int THRESHOLD_EXCEEDED_EXIT = 2;
     private static final ConcurrentMap<Path, ReentrantLock> IN_PROCESS_STATE_LOCKS = new ConcurrentHashMap<>();
 
