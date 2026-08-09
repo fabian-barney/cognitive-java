@@ -1,6 +1,7 @@
 package media.barney.cognitive.core;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import java.io.IOException;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -165,6 +166,40 @@ class ChangedFileDetectorTest {
     }
 
     @Test
+    void ignoresChangedJavaFilesTraversingIntermediateSymlink() throws Exception {
+        assumeTrue(!isWindows(), "This symlink test requires filesystem symlinks");
+
+        Path sourceRoot = tempDir.resolve("src/main/java");
+        Path linkedTarget = tempDir.resolve("linked-target");
+        Files.createDirectories(sourceRoot);
+        Files.createDirectories(linkedTarget);
+        Files.writeString(linkedTarget.resolve("Changed.java"), "class Changed {}\n");
+        Files.createSymbolicLink(sourceRoot.resolve("linked"), linkedTarget.toAbsolutePath());
+
+        List<Path> changed = ChangedFileDetector.changedJavaFilesUnderSourceRoots(
+                tempDir,
+                List.of(sourceRoot),
+                ignored -> new CompletedProcess(0, "?? src/main/java/linked/Changed.java\0", ""));
+
+        assertEquals(List.of(), changed);
+    }
+
+    @Test
+    void keepsExistingChangedJavaFilesUnderSourceRoots() throws Exception {
+        Path sourceRoot = tempDir.resolve("src/custom/java");
+        Path existing = sourceRoot.resolve("demo/Existing.java");
+        Files.createDirectories(existing.getParent());
+        Files.writeString(existing, "class Existing {}\n");
+
+        List<Path> changed = ChangedFileDetector.changedJavaFilesUnderSourceRoots(
+                tempDir,
+                List.of(sourceRoot),
+                ignored -> new CompletedProcess(0, "M  src/custom/java/demo/Existing.java\0", ""));
+
+        assertEquals(List.of(existing), changed);
+    }
+
+    @Test
     void drainsProcessOutputBeforeWaitingForExit() throws Exception {
         List<Path> changed = ChangedFileDetector.changedJavaFiles(tempDir,
                 ignored -> new ReadBeforeWaitProcess("?? src/main/java/demo/NewFile.java\0"));
@@ -221,6 +256,17 @@ class ChangedFileDetectorTest {
     }
 
     @Test
+    void escapesNullBytesInCapturedGitOutput() {
+        IOException error = assertThrows(IOException.class,
+                () -> ChangedFileDetector.changedJavaFiles(tempDir,
+                        ignored -> new CompletedProcess(1, "bad\0output", "")));
+
+        String message = Objects.requireNonNull(error.getMessage());
+        assertTrue(message.contains("bad\\0output"));
+        assertFalse(message.contains("bad\0output"));
+    }
+
+    @Test
     void rejectsTruncatedGitStatusOutputOnSuccess() {
         String noisy = "?? src/main/java/demo/" + "x".repeat(ChangedFileDetectorTestSupport.OUTPUT_LENGTH) + ".java\0";
 
@@ -253,6 +299,24 @@ class ChangedFileDetectorTest {
         assertTrue(Objects.requireNonNull(error.getMessage()).contains("could not be terminated within"));
         assertTrue(process.stdoutClosed());
         assertTrue(process.stderrClosed());
+    }
+
+    @Test
+    void destroysAndClosesCaptureStreamsWhenInterrupted() {
+        InterruptedProcess process = new InterruptedProcess();
+
+        try {
+            InterruptedException exception = assertThrows(InterruptedException.class,
+                    () -> ChangedFileDetector.changedJavaFiles(tempDir, ignored -> process));
+
+            assertEquals("interrupted wait", exception.getMessage());
+            assertTrue(process.destroyed());
+            assertTrue(process.stdoutClosed());
+            assertTrue(process.stderrClosed());
+            assertTrue(Thread.currentThread().isInterrupted());
+        } finally {
+            Thread.interrupted();
+        }
     }
 
     private static void run(Path dir, String... command) throws IOException, InterruptedException {
@@ -513,6 +577,70 @@ class ChangedFileDetectorTest {
 
         private boolean stderrClosed() {
             return stderr.closed();
+        }
+    }
+
+    private static final class InterruptedProcess extends Process {
+        private final BlockingInputStream stdout = new BlockingInputStream();
+        private final BlockingInputStream stderr = new BlockingInputStream();
+        private boolean destroyed;
+
+        @Override
+        public OutputStream getOutputStream() {
+            return OutputStream.nullOutputStream();
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            return stdout;
+        }
+
+        @Override
+        public InputStream getErrorStream() {
+            return stderr;
+        }
+
+        @Override
+        public int waitFor() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean waitFor(long timeout, java.util.concurrent.TimeUnit unit) throws InterruptedException {
+            throw new InterruptedException("interrupted wait");
+        }
+
+        @Override
+        public int exitValue() {
+            return 143;
+        }
+
+        @Override
+        public void destroy() {
+            destroyed = true;
+        }
+
+        @Override
+        public Process destroyForcibly() {
+            destroyed = true;
+            return this;
+        }
+
+        @Override
+        public boolean isAlive() {
+            return !destroyed;
+        }
+
+        private boolean stdoutClosed() {
+            return stdout.closed();
+        }
+
+        private boolean stderrClosed() {
+            return stderr.closed();
+        }
+
+        private boolean destroyed() {
+            return destroyed;
         }
     }
 
