@@ -350,6 +350,58 @@ class JavaMethodParserTest {
     }
 
     @Test
+    void preservesLogicalSequenceOperatorTransitions() {
+        String source = """
+                class Sample {
+                    int andThenOr(boolean a, boolean b, boolean c) {
+                        if (a && b || c) {
+                            return 1;
+                        }
+                        return 0;
+                    }
+                    int orThenAnd(boolean a, boolean b, boolean c) {
+                        if (a || b && c) {
+                            return 1;
+                        }
+                        return 0;
+                    }
+                }
+                """;
+
+        List<MethodDescriptor> methods = JavaMethodParser.parse("Sample", source);
+
+        assertEquals(List.of(
+                new MethodDescriptor("andThenOr", 2, 7, 3),
+                new MethodDescriptor("orThenAnd", 8, 13, 3)
+        ), methods);
+    }
+
+    @Test
+    void preservesMethodCallOwnerNamesForNestedAndUnsupportedReceivers() {
+        String source = """
+                class Sample {
+                    void local() {
+                    }
+
+                    void use(Dependency dependency) {
+                        local();
+                        this.local();
+                        dependency.client.call();
+                        new Helper().call();
+                    }
+                }
+                """;
+
+        List<ParsedMethod> methods = JavaMethodParser.parseDetailed("Sample", source);
+        List<MethodCall> calls = methods.get(1).calls();
+
+        assertEquals(new MethodCall("Sample", true, "local", 0), calls.get(0));
+        assertEquals(new MethodCall("Sample", true, "local", 0), calls.get(1));
+        assertEquals(new MethodCall("dependency.client", false, "call", 0), calls.get(2));
+        assertEquals(new MethodCall(null, false, "call", 0), calls.get(3));
+    }
+
+    @Test
     void countsLabeledJumpsLambdaNestingAndSwitchExpressions() {
         String source = """
                 class Sample {

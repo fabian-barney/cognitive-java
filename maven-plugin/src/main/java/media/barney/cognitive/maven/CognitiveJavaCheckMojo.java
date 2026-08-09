@@ -201,7 +201,7 @@ public class CognitiveJavaCheckMojo extends AbstractMojo {
         StringBuilder current = new StringBuilder();
         for (int index = 0; index < propertyValue.length(); index++) {
             char character = propertyValue.charAt(index);
-            if (character == '\\' && index + 1 < propertyValue.length() && propertyValue.charAt(index + 1) == ',') {
+            if (isEscapedComma(propertyValue, index)) {
                 current.append(',');
                 index++;
                 continue;
@@ -215,6 +215,12 @@ public class CognitiveJavaCheckMojo extends AbstractMojo {
         }
         values.add(current.toString());
         return values;
+    }
+
+    private static boolean isEscapedComma(String propertyValue, int index) {
+        return propertyValue.charAt(index) == '\\'
+                && index + 1 < propertyValue.length()
+                && propertyValue.charAt(index + 1) == ',';
     }
 
     private static List<String> configuredListValues(List<String> values) {

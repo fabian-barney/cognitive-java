@@ -9,6 +9,7 @@ import java.util.regex.PatternSyntaxException;
 
 final class SourceExclusionMatcher {
 
+    private static final Pattern PATH_SEPARATOR = Pattern.compile("/");
     private static final List<String> DEFAULT_CLASS_REGEXES = List.of(
             "(^|.*\\.)generated(\\..*)?",
             "(^|.*\\.)gen(\\..*)?",
@@ -49,18 +50,10 @@ final class SourceExclusionMatcher {
 
     Optional<String> pathExclusionReason(Path file) {
         String relativePath = normalizedRelativePath(file);
-        if (useDefaultExclusions && isUnderGeneratedDirectory(relativePath)) {
-            return Optional.of("default:path:generated-directory");
-        }
-        if (useDefaultExclusions && isUnderSrcMainJavaGen(relativePath)) {
-            return Optional.of("default:path:src-main-java-gen");
-        }
-        for (GlobRule rule : userPathRules) {
-            if (rule.pattern().matcher(relativePath).matches()) {
-                return Optional.of("user:path:" + rule.glob());
-            }
-        }
-        return Optional.empty();
+        return defaultPathExclusionReason(relativePath).or(() -> userPathRules.stream()
+                .filter(rule -> rule.pattern().matcher(relativePath).matches())
+                .map(rule -> "user:path:" + rule.glob())
+                .findFirst());
     }
 
     Optional<String> classExclusionReason(String className, List<String> annotationNames) {
@@ -69,17 +62,27 @@ final class SourceExclusionMatcher {
     }
 
     private Optional<String> classRegexExclusionReason(String className) {
-        for (RegexRule rule : defaultClassRules) {
-            if (rule.pattern().matcher(className).matches()) {
-                return Optional.of(rule.reason());
-            }
+        return firstRegexExclusionReason(defaultClassRules, className)
+                .or(() -> firstRegexExclusionReason(userClassRules, className));
+    }
+
+    private Optional<String> defaultPathExclusionReason(String relativePath) {
+        if (!useDefaultExclusions) {
+            return Optional.empty();
         }
-        for (RegexRule rule : userClassRules) {
-            if (rule.pattern().matcher(className).matches()) {
-                return Optional.of(rule.reason());
-            }
+        if (isUnderGeneratedDirectory(relativePath)) {
+            return Optional.of("default:path:generated-directory");
         }
-        return Optional.empty();
+        return isUnderSrcMainJavaGen(relativePath)
+                ? Optional.of("default:path:src-main-java-gen")
+                : Optional.empty();
+    }
+
+    private static Optional<String> firstRegexExclusionReason(List<RegexRule> rules, String className) {
+        return rules.stream()
+                .filter(rule -> rule.pattern().matcher(className).matches())
+                .map(RegexRule::reason)
+                .findFirst();
     }
 
     private Optional<String> annotationExclusionReason(List<String> annotationNames) {
@@ -118,18 +121,9 @@ final class SourceExclusionMatcher {
         if (lastSeparator < 0) {
             return false;
         }
-        int segmentStart = 0;
-        while (segmentStart < lastSeparator) {
-            int segmentEnd = normalizedPath.indexOf('/', segmentStart);
-            if (segmentEnd < 0 || segmentEnd > lastSeparator) {
-                segmentEnd = lastSeparator;
-            }
-            if (normalizedPath.substring(segmentStart, segmentEnd).contains("generated")) {
-                return true;
-            }
-            segmentStart = segmentEnd + 1;
-        }
-        return false;
+        String directoryPath = normalizedPath.substring(0, lastSeparator);
+        return PATH_SEPARATOR.splitAsStream(directoryPath)
+                .anyMatch(segment -> segment.contains("generated"));
     }
 
     private static boolean isUnderSrcMainJavaGen(String normalizedPath) {

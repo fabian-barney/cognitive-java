@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
@@ -351,6 +352,19 @@ final class JavaMethodParser {
     }
 
     private static final class MethodAnalysisScanner extends TreeScanner<Void, Integer> {
+        private static final Map<Tree.Kind, LogicalExpressionHandler> LOGICAL_EXPRESSION_HANDLERS = Map.of(
+                Tree.Kind.PARENTHESIZED, MethodAnalysisScanner::scanParenthesized,
+                Tree.Kind.LOGICAL_COMPLEMENT, MethodAnalysisScanner::scanLogicalComplement,
+                Tree.Kind.CONDITIONAL_AND, MethodAnalysisScanner::scanLogicalBinary,
+                Tree.Kind.CONDITIONAL_OR, MethodAnalysisScanner::scanLogicalBinary
+        );
+        private static final Map<Tree.Kind, ExpressionNameResolver> EXPRESSION_NAME_RESOLVERS = Map.of(
+                Tree.Kind.IDENTIFIER,
+                expression -> ((IdentifierTree) expression).getName().toString(),
+                Tree.Kind.MEMBER_SELECT,
+                MethodAnalysisScanner::memberSelectName
+        );
+
         private final String ownerClassName;
         private final List<MethodCall> calls = new ArrayList<>();
         private int cognitiveComplexity;
@@ -519,53 +533,75 @@ final class JavaMethodParser {
         }
 
         private void scanLogicalExpression(Tree tree, int nesting, LogicalSequence currentOperator) {
-            if (tree instanceof ParenthesizedTree parenthesizedTree) {
-                scanLogicalExpression(parenthesizedTree.getExpression(), nesting, currentOperator);
-                return;
-            }
-            if (tree instanceof UnaryTree unaryTree && unaryTree.getKind() == Tree.Kind.LOGICAL_COMPLEMENT) {
-                scanLogicalExpression(unaryTree.getExpression(), nesting, LogicalSequence.NONE);
-                return;
-            }
-            if (tree instanceof BinaryTree binaryTree && isLogicalOperator(binaryTree.getKind())) {
-                LogicalSequence operator = logicalSequence(binaryTree.getKind());
-                if (currentOperator != operator) {
-                    incrementFundamental();
-                }
-                scanLogicalExpression(binaryTree.getLeftOperand(), nesting, operator);
-                scanLogicalExpression(binaryTree.getRightOperand(), nesting, operator);
+            LogicalExpressionHandler handler = LOGICAL_EXPRESSION_HANDLERS.get(tree.getKind());
+            if (handler != null) {
+                handler.scan(this, tree, nesting, currentOperator);
                 return;
             }
             scan(tree, nesting);
+        }
+
+        private static void scanParenthesized(MethodAnalysisScanner scanner,
+                                              Tree tree,
+                                              int nesting,
+                                              LogicalSequence currentOperator) {
+            scanner.scanLogicalExpression(
+                    ((ParenthesizedTree) tree).getExpression(),
+                    nesting,
+                    currentOperator);
+        }
+
+        private static void scanLogicalComplement(MethodAnalysisScanner scanner,
+                                                  Tree tree,
+                                                  int nesting,
+                                                  LogicalSequence currentOperator) {
+            scanner.scanLogicalExpression(
+                    ((UnaryTree) tree).getExpression(),
+                    nesting,
+                    LogicalSequence.NONE);
+        }
+
+        private static void scanLogicalBinary(MethodAnalysisScanner scanner,
+                                              Tree tree,
+                                              int nesting,
+                                              LogicalSequence currentOperator) {
+            BinaryTree binaryTree = (BinaryTree) tree;
+            LogicalSequence operator = logicalSequence(binaryTree.getKind());
+            if (currentOperator != operator) {
+                scanner.incrementFundamental();
+            }
+            scanner.scanLogicalExpression(binaryTree.getLeftOperand(), nesting, operator);
+            scanner.scanLogicalExpression(binaryTree.getRightOperand(), nesting, operator);
         }
 
         private @Nullable MethodCall methodCall(MethodInvocationTree node) {
             if (node.getMethodSelect() instanceof IdentifierTree identifier) {
                 return new MethodCall(ownerClassName, true, identifier.getName().toString(), node.getArguments().size());
             }
-            if (node.getMethodSelect() instanceof MemberSelectTree memberSelect) {
-                String ownerName = expressionName(memberSelect.getExpression());
-                String methodName = memberSelect.getIdentifier().toString();
-                if ("this".equals(ownerName) || "super".equals(ownerName)) {
-                    return new MethodCall(ownerClassName, true, methodName, node.getArguments().size());
-                }
-                return new MethodCall(ownerName, false, methodName, node.getArguments().size());
+            if (!(node.getMethodSelect() instanceof MemberSelectTree memberSelect)) {
+                return null;
             }
-            return null;
+            return memberMethodCall(memberSelect, node.getArguments().size());
+        }
+
+        private MethodCall memberMethodCall(MemberSelectTree memberSelect, int argumentCount) {
+            String ownerName = expressionName(memberSelect.getExpression());
+            String methodName = memberSelect.getIdentifier().toString();
+            boolean currentClass = "this".equals(ownerName) || "super".equals(ownerName);
+            return new MethodCall(currentClass ? ownerClassName : ownerName, currentClass, methodName, argumentCount);
         }
 
         private static @Nullable String expressionName(ExpressionTree expression) {
-            if (expression instanceof IdentifierTree identifier) {
-                return identifier.getName().toString();
-            }
-            if (expression instanceof MemberSelectTree memberSelect) {
-                String prefix = expressionName(memberSelect.getExpression());
-                if (prefix == null) {
-                    return null;
-                }
-                return prefix + "." + memberSelect.getIdentifier();
-            }
-            return null;
+            return Optional.ofNullable(EXPRESSION_NAME_RESOLVERS.get(expression.getKind()))
+                    .map(resolver -> resolver.resolve(expression))
+                    .orElse(null);
+        }
+
+        private static @Nullable String memberSelectName(ExpressionTree expression) {
+            MemberSelectTree memberSelect = (MemberSelectTree) expression;
+            return Optional.ofNullable(expressionName(memberSelect.getExpression()))
+                    .map(prefix -> prefix + "." + memberSelect.getIdentifier())
+                    .orElse(null);
         }
 
         private static boolean isLogicalOperator(Tree.Kind kind) {
@@ -586,6 +622,19 @@ final class JavaMethodParser {
 
         private void incrementFundamental() {
             cognitiveComplexity++;
+        }
+
+        @FunctionalInterface
+        private interface LogicalExpressionHandler {
+            void scan(MethodAnalysisScanner scanner,
+                      Tree tree,
+                      int nesting,
+                      LogicalSequence currentOperator);
+        }
+
+        @FunctionalInterface
+        private interface ExpressionNameResolver {
+            @Nullable String resolve(ExpressionTree expression);
         }
     }
 

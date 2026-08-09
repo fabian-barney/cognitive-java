@@ -106,19 +106,32 @@ final class CliApplication {
     }
 
     private List<Path> nonExplicitFiles(CliMode mode, List<String> sourceRoots) throws Exception {
-        List<Path> configuredSourceRoots = sourceRoots.isEmpty()
+        List<Path> configuredSourceRoots = configuredSourceRoots(sourceRoots);
+        if (mode == CliMode.CHANGED_SRC) {
+            return changedFiles(configuredSourceRoots);
+        }
+        if (mode == CliMode.ALL_SRC) {
+            return allFiles(configuredSourceRoots);
+        }
+        throw new IllegalStateException("Unexpected CLI mode during non-explicit file resolution: " + mode);
+    }
+
+    private List<Path> configuredSourceRoots(List<String> sourceRoots) throws IOException {
+        return sourceRoots.isEmpty()
                 ? List.of()
                 : AnalysisSourceRoots.resolveConfiguredSourceRoots(projectRoot, sourceRoots);
-        return switch (mode) {
-            case CHANGED_SRC -> configuredSourceRoots.isEmpty()
-                    ? ChangedFileDetector.changedJavaFilesUnderSourceRoots(projectRoot)
-                    : ChangedFileDetector.changedJavaFilesUnderSourceRoots(projectRoot, configuredSourceRoots);
-            case ALL_SRC -> configuredSourceRoots.isEmpty()
-                    ? SourceFileFinder.findAllJavaFilesUnderSourceRoots(projectRoot)
-                    : SourceFileFinder.findAllJavaFiles(configuredSourceRoots);
-            case EXPLICIT_FILES, HELP ->
-                    throw new IllegalStateException("Unexpected CLI mode during non-explicit file resolution: " + mode);
-        };
+    }
+
+    private List<Path> changedFiles(List<Path> configuredSourceRoots) throws Exception {
+        return configuredSourceRoots.isEmpty()
+                ? ChangedFileDetector.changedJavaFilesUnderSourceRoots(projectRoot)
+                : ChangedFileDetector.changedJavaFilesUnderSourceRoots(projectRoot, configuredSourceRoots);
+    }
+
+    private List<Path> allFiles(List<Path> configuredSourceRoots) throws IOException {
+        return configuredSourceRoots.isEmpty()
+                ? SourceFileFinder.findAllJavaFilesUnderSourceRoots(projectRoot)
+                : SourceFileFinder.findAllJavaFiles(configuredSourceRoots);
     }
 
     private List<Path> explicitFiles(List<String> args, List<String> sourceRoots) throws Exception {

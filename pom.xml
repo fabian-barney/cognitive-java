@@ -45,7 +45,7 @@
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <crap-java.version>0.6.1</crap-java.version>
+    <crap-java.version>0.6.2</crap-java.version>
     <jacoco.version>0.8.15</jacoco.version>
     <junit.version>6.1.3</junit.version>
     <maven.surefire.plugin.version>3.5.6</maven.surefire.plugin.version>
@@ -193,8 +193,6 @@
             <groupId>media.barney</groupId>
             <artifactId>crap-java-maven-plugin</artifactId>
             <version>${crap-java.version}</version>
-            <configuration>
-            </configuration>
             <executions>
               <execution>
                 <id>crap-java-check</id>
@@ -208,8 +206,6 @@
             <groupId>media.barney</groupId>
             <artifactId>cognitive-java-maven-plugin</artifactId>
             <version>${project.version}</version>
-            <configuration>
-            </configuration>
             <executions>
               <execution>
                 <id>cognitive-java-check</id>
@@ -230,8 +226,6 @@
             <groupId>media.barney</groupId>
             <artifactId>crap-java-maven-plugin</artifactId>
             <version>${crap-java.version}</version>
-            <configuration>
-            </configuration>
             <executions>
               <execution>
                 <id>crap-java-check</id>
@@ -252,8 +246,6 @@
             <groupId>media.barney</groupId>
             <artifactId>cognitive-java-maven-plugin</artifactId>
             <version>${project.version}</version>
-            <configuration>
-            </configuration>
             <executions>
               <execution>
                 <id>cognitive-java-check</id>

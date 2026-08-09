@@ -6,6 +6,14 @@ import org.jspecify.annotations.Nullable;
 
 final class CliArgumentsParser {
 
+    private static final List<ValuedOptionParser> VALUED_OPTION_PARSERS = List.of(
+            CliArgumentsParser::parseReportFormatOption,
+            CliArgumentsParser::parseOutputOption,
+            CliArgumentsParser::parseJunitReportOption,
+            CliArgumentsParser::parseThresholdOption,
+            CliArgumentsParser::parseExclusionOption
+    );
+
     private CliArgumentsParser() {
     }
 
@@ -110,12 +118,10 @@ final class CliArgumentsParser {
 
     private static int parseValuedOption(String[] args, int index, ParseStateBuilder state, String arg) {
         AssignedOption option = AssignedOption.parse(arg);
-        if (parseReportFormatOption(args, index, state, option)
-                || parseOutputOption(args, index, state, option)
-                || parseJunitReportOption(args, index, state, option)
-                || parseThresholdOption(args, index, state, option)
-                || parseExclusionOption(args, index, state, option)) {
-            return option.hasInlineValue() ? index : index + 1;
+        for (ValuedOptionParser parser : VALUED_OPTION_PARSERS) {
+            if (parser.parse(args, index, state, option)) {
+                return option.hasInlineValue() ? index : index + 1;
+            }
         }
         throw new IllegalArgumentException("Unknown option: " + arg);
     }
@@ -278,6 +284,11 @@ final class CliArgumentsParser {
                               List<String> sourceRoots,
                               SourceExclusionOptions exclusionOptions,
                               List<String> fileArgs) {
+    }
+
+    @FunctionalInterface
+    private interface ValuedOptionParser {
+        boolean parse(String[] args, int index, ParseStateBuilder state, AssignedOption option);
     }
 
     private static final class ParseStateBuilder {

@@ -19,6 +19,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.IntStream;
 import org.jspecify.annotations.Nullable;
 
 final class ReportFormatter {
@@ -28,6 +31,17 @@ final class ReportFormatter {
             .writer(new JsonPrettyPrinter());
     private static final ObjectWriter XML_WRITER = xmlMapper()
             .writerWithDefaultPrettyPrinter();
+    private static final Map<ReportFormat, FormatRenderer> FORMAT_RENDERERS = Map.of(
+            ReportFormat.TOON,
+            (report, omitRedundancy, includeExclusionAudit) ->
+                    JToon.encodeJson(formatJson(report, omitRedundancy, includeExclusionAudit)),
+            ReportFormat.JSON,
+            ReportFormatter::formatJson,
+            ReportFormat.TEXT,
+            ReportFormatter::formatText,
+            ReportFormat.JUNIT,
+            ReportFormatter::formatJunit
+    );
 
     private ReportFormatter() {
     }
@@ -52,13 +66,10 @@ final class ReportFormatter {
             return "";
         }
         CognitiveReport selected = failuresOnly ? failuresOnly(report) : report;
-        return switch (format) {
-            case TOON -> JToon.encodeJson(formatJson(selected, omitRedundancy, includeExclusionAudit));
-            case JSON -> formatJson(selected, omitRedundancy, includeExclusionAudit);
-            case TEXT -> formatText(selected, omitRedundancy, includeExclusionAudit);
-            case JUNIT -> formatJunit(selected, omitRedundancy, includeExclusionAudit);
-            case NONE -> "";
-        };
+        return Objects.requireNonNull(
+                        FORMAT_RENDERERS.get(format),
+                        () -> "No renderer configured for report format: " + format)
+                .render(selected, omitRedundancy, includeExclusionAudit);
     }
 
     private static String formatText(CognitiveReport report,
@@ -369,15 +380,22 @@ final class ReportFormatter {
     }
 
     private static boolean hasExclusionAudit(SourceExclusionAudit audit) {
-        return audit.discoveredFiles() != 0
-                || audit.analyzedFiles() != 0
-                || audit.analyzedMethods() != 0
-                || audit.excludedFileCount() != 0
-                || audit.excludedClassCount() != 0;
+        return IntStream.of(
+                audit.discoveredFiles(),
+                audit.analyzedFiles(),
+                audit.analyzedMethods(),
+                audit.excludedFileCount(),
+                audit.excludedClassCount()
+        ).anyMatch(value -> value != 0);
     }
 
     private static String formatTime(double elapsedSeconds) {
         return String.format(Locale.ROOT, "%.6f", Math.max(0.0, elapsedSeconds));
+    }
+
+    @FunctionalInterface
+    private interface FormatRenderer {
+        String render(CognitiveReport report, boolean omitRedundancy, boolean includeExclusionAudit);
     }
 
     private record JsonReport(

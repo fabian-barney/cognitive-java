@@ -168,22 +168,24 @@ record ReportOptions(
         if (symlinkDepth > 8) {
             return null;
         }
-        Path normalized = path.toAbsolutePath().normalize();
         try {
-            if (Files.isSymbolicLink(normalized)) {
-                return symbolicLinkTargetForComparison(normalized, symlinkDepth);
-            }
-            if (Files.exists(normalized)) {
-                return normalized.toRealPath();
-            }
-            Path existing = nearestExistingPath(normalized);
-            if (existing != null) {
-                return existing.toRealPath().resolve(existing.relativize(normalized)).normalize();
-            }
+            return existingRealPath(path.toAbsolutePath().normalize(), symlinkDepth);
         } catch (IOException | SecurityException exception) {
             return null;
         }
-        return null;
+    }
+
+    private static @Nullable Path existingRealPath(Path normalized, int symlinkDepth) throws IOException {
+        if (Files.isSymbolicLink(normalized)) {
+            return symbolicLinkTargetForComparison(normalized, symlinkDepth);
+        }
+        if (Files.exists(normalized)) {
+            return normalized.toRealPath();
+        }
+        Path existing = nearestExistingPath(normalized);
+        return existing == null
+                ? null
+                : existing.toRealPath().resolve(existing.relativize(normalized)).normalize();
     }
 
     private static @Nullable Path symbolicLinkTargetForComparison(Path link, int symlinkDepth) throws IOException {
