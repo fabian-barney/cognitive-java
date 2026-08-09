@@ -2,9 +2,20 @@
 
 ## Unreleased
 
+## 0.7.0 - 2026-08-09
+
+### Added
+
+- Added GitLab-visible Cognitive Complexity metrics to JUnit testcase names and testcase-level `system-out` output.
+
 ### Changed
 
 - Reduced the default Cognitive Complexity threshold from `15` to `8`.
+- Refreshed compatible dependency, build-tool, and release-publication versions.
+
+### Fixed
+
+- Fixed Windows Gradle wrapper failure-path handling and stabilized locale-sensitive JUnit testcase names.
 
 ## 0.6.0 - 2026-06-01
 
