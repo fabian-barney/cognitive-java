@@ -13,6 +13,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -694,6 +695,52 @@ class CognitiveJavaGradlePluginTest {
     }
 
     @Test
+    void realPathForComparisonPreservesExistingMissingAndSymlinkBehavior() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        Path existing = projectRoot.resolve("existing/report.json");
+        Path missing = projectRoot.resolve("missing/report.json");
+        Files.createDirectories(parentOf(existing));
+        Files.writeString(existing, "{}");
+
+        assertEquals(existing.toRealPath(), invoke(
+                task,
+                "realPathForComparison",
+                new Class<?>[]{Path.class, int.class},
+                new Object[]{existing, 0}
+        ));
+        assertEquals(missing.toAbsolutePath().normalize(), invoke(
+                task,
+                "realPathForComparison",
+                new Class<?>[]{Path.class, int.class},
+                new Object[]{missing, 0}
+        ));
+        assertEquals(null, invoke(
+                task,
+                "realPathForComparison",
+                new Class<?>[]{Path.class, int.class},
+                new Object[]{existing, 9}
+        ));
+
+        Path link = projectRoot.resolve("existing/report-link.json");
+        try {
+            Files.createSymbolicLink(link, existing.getFileName());
+        } catch (UnsupportedOperationException | IOException | SecurityException exception) {
+            assumeTrue(false, "Symbolic links are unavailable: " + exception.getMessage());
+        }
+        try {
+            assertEquals(existing.toRealPath(), invoke(
+                    task,
+                    "realPathForComparison",
+                    new Class<?>[]{Path.class, int.class},
+                    new Object[]{link, 0}
+            ));
+        } finally {
+            Files.deleteIfExists(link);
+        }
+    }
+
+    @Test
     void rememberChangedReportStateRecordsNewChangedReports() throws Exception {
         Path projectRoot = tempDir.toRealPath();
         assumeHardLinksAvailable(projectRoot);
@@ -736,6 +783,36 @@ class CognitiveJavaGradlePluginTest {
     }
 
     @Test
+    void changedReportCleanupKeepsExistingAndCurrentReports() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        assumeHardLinksAvailable(projectRoot);
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+        Path report = projectRoot.resolve("build/reports/cognitive-java/report.json");
+        Path newReport = projectRoot.resolve("build/reports/cognitive-java/new-report.json");
+        Files.createDirectories(parentOf(report));
+        Files.writeString(report, "{}");
+        invoke(task, "rememberOutputPath", new Class<?>[]{Path.class}, new Object[]{report});
+        Object remembered = invoke(task, "rememberedOutputPath", new Class<?>[]{}, new Object[]{});
+        Object missing = invoke(task, "reportSnapshot", new Class<?>[]{Path.class}, new Object[]{null});
+        Object existing = invoke(task, "reportSnapshot", new Class<?>[]{Path.class}, new Object[]{report});
+
+        Files.writeString(newReport, "{\"new\":true}");
+        invoke(task, "deleteNewUnrememberedChangedReport",
+                new Class<?>[]{Path.class, existing.getClass(), remembered.getClass()},
+                new Object[]{newReport, existing, remembered});
+        assertTrue(Files.exists(newReport));
+
+        invoke(task, "deleteNewUnrememberedChangedReport",
+                new Class<?>[]{Path.class, missing.getClass(), remembered.getClass()},
+                new Object[]{report, missing, remembered});
+        assertTrue(Files.exists(report));
+
+        invoke(task, "deleteNewUnrememberedChangedReport",
+                new Class<?>[]{Path.class, missing.getClass(), remembered.getClass()},
+                new Object[]{null, missing, remembered});
+    }
+
+    @Test
     void rememberedOutputDetectsOtherOwnerLink() throws Exception {
         Path projectRoot = tempDir.toRealPath();
         assumeHardLinksAvailable(projectRoot);
@@ -746,12 +823,40 @@ class CognitiveJavaGradlePluginTest {
         CognitiveJavaCheckTask secondTask = newCheckTask(projectRoot, "second-cognitive-java-check");
 
         invoke(firstTask, "rememberOutputPath", new Class<?>[]{Path.class}, new Object[]{report});
-        invoke(secondTask, "rememberOutputPath", new Class<?>[]{Path.class}, new Object[]{report});
         Object rememberedOutput = invoke(firstTask, "rememberedOutputPath", new Class<?>[]{}, new Object[]{});
 
         assertNotNull(rememberedOutput);
+        assertFalse((boolean) invoke(
+                firstTask,
+                "hasOtherOwnerLink",
+                new Class<?>[]{rememberedOutput.getClass()},
+                new Object[]{rememberedOutput}
+        ));
+        invoke(secondTask, "rememberOutputPath", new Class<?>[]{Path.class}, new Object[]{report});
         assertTrue((boolean) invoke(
                 firstTask,
+                "hasOtherOwnerLink",
+                new Class<?>[]{rememberedOutput.getClass()},
+                new Object[]{rememberedOutput}
+        ));
+    }
+
+    @Test
+    void rememberedOutputDoesNotScanMissingStateRoot() throws Exception {
+        Path projectRoot = tempDir.toRealPath();
+        assumeHardLinksAvailable(projectRoot);
+        Path report = projectRoot.resolve("build/reports/cognitive-java/report.json");
+        Files.createDirectories(parentOf(report));
+        Files.writeString(report, "{}");
+        CognitiveJavaCheckTask task = newCheckTask(projectRoot);
+
+        invoke(task, "rememberOutputPath", new Class<?>[]{Path.class}, new Object[]{report});
+        Object rememberedOutput = invoke(task, "rememberedOutputPath", new Class<?>[]{}, new Object[]{});
+        assertNotNull(rememberedOutput);
+        deleteTree(projectCacheRootPath(task).resolve("cognitive-java"));
+
+        assertFalse((boolean) invoke(
+                task,
                 "hasOtherOwnerLink",
                 new Class<?>[]{rememberedOutput.getClass()},
                 new Object[]{rememberedOutput}
@@ -888,6 +993,12 @@ class CognitiveJavaGradlePluginTest {
         return (Path) outputStatePath.invoke(task);
     }
 
+    private Path projectCacheRootPath(CognitiveJavaCheckTask task) throws Exception {
+        var field = CognitiveJavaCheckTask.class.getDeclaredField("projectCacheRootPath");
+        field.setAccessible(true);
+        return (Path) field.get(task);
+    }
+
     private Path executionMarkerPath(CognitiveJavaCheckTask task) throws Exception {
         Method executionMarkerPath = CognitiveJavaCheckTask.class.getDeclaredMethod("executionMarkerPath");
         executionMarkerPath.setAccessible(true);
@@ -953,6 +1064,17 @@ class CognitiveJavaGradlePluginTest {
 
     private Path fileNameOf(Path path) {
         return Objects.requireNonNull(path.getFileName(), () -> "Expected file name for " + path);
+    }
+
+    private void deleteTree(Path root) throws IOException {
+        if (!Files.exists(root)) {
+            return;
+        }
+        try (var paths = Files.walk(root)) {
+            for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
+                Files.deleteIfExists(path);
+            }
+        }
     }
 
     private Path rootOf(Path path) {

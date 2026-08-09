@@ -598,20 +598,23 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         }
         Path normalized = path.toAbsolutePath().normalize();
         try {
-            if (Files.isSymbolicLink(normalized)) {
-                return symbolicLinkTargetForComparison(normalized, symlinkDepth);
-            }
-            if (Files.exists(normalized)) {
-                return normalized.toRealPath();
-            }
-            Path existing = nearestExistingPath(normalized);
-            if (existing != null) {
-                return existing.toRealPath().resolve(existing.relativize(normalized)).normalize();
-            }
+            return existingRealPath(normalized, symlinkDepth);
         } catch (IOException | SecurityException exception) {
             return null;
         }
-        return null;
+    }
+
+    private @Nullable Path existingRealPath(Path normalized, int symlinkDepth) throws IOException {
+        if (Files.isSymbolicLink(normalized)) {
+            return symbolicLinkTargetForComparison(normalized, symlinkDepth);
+        }
+        if (Files.exists(normalized)) {
+            return normalized.toRealPath();
+        }
+        Path existing = nearestExistingPath(normalized);
+        return existing == null
+                ? null
+                : existing.toRealPath().resolve(existing.relativize(normalized)).normalize();
     }
 
     private @Nullable Path symbolicLinkTargetForComparison(Path link, int symlinkDepth) throws IOException {
@@ -763,10 +766,21 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         if (rememberedReport == null || before.exists()) {
             return;
         }
+        deleteChangedReport(reportPath, before, rememberedReport);
+    }
+
+    private void deleteChangedReport(
+            @Nullable Path reportPath,
+            ReportSnapshot before,
+            RememberedReport rememberedReport
+    ) throws IOException {
         if (isCurrentRememberedPath(rememberedReport, reportPath)) {
             return;
         }
-        if (reportPath != null && reportChanged(reportPath, before)) {
+        if (reportPath == null) {
+            return;
+        }
+        if (reportChanged(reportPath, before)) {
             Files.deleteIfExists(reportPath);
         }
     }
@@ -963,10 +977,15 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
             return false;
         }
         try (Stream<Path> paths = Files.walk(stateRoot)) {
-            for (Path path : paths.filter(this::isOwnerLink).toList()) {
-                if (!path.equals(rememberedReport.ownerLink()) && sameExistingFile(path, rememberedReport.path())) {
-                    return true;
-                }
+            return containsOtherOwnerLink(paths.filter(this::isOwnerLink), rememberedReport);
+        }
+    }
+
+    private boolean containsOtherOwnerLink(Stream<Path> ownerLinks, RememberedReport rememberedReport)
+            throws IOException {
+        for (Path path : ownerLinks.toList()) {
+            if (!path.equals(rememberedReport.ownerLink()) && sameExistingFile(path, rememberedReport.path())) {
+                return true;
             }
         }
         return false;

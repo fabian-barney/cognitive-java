@@ -116,7 +116,7 @@ class CognitiveJavaCheckMojoTest {
         setField(mojo, "project", project(root, "root"));
         setField(mojo, "excludesProperty", "module-a/**, module-b/**");
         setField(mojo, "excludes", List.of("**/custom/**"));
-        setField(mojo, "excludeClassesProperty", ".*MapperImpl$, demo.Name{1\\,3}$, demo.\\d+$");
+        setField(mojo, "excludeClassesProperty", ".*MapperImpl$, demo.Name{1\\,3}$, demo.\\d+$, trailing\\");
         setField(mojo, "excludeClasses", List.of("demo.Other{1,3}$"));
         setField(mojo, "excludeAnnotationsProperty", "Generated");
         setField(mojo, "excludeAnnotations", List.of("com.acme.Generated"));
@@ -139,6 +139,8 @@ class CognitiveJavaCheckMojoTest {
                 "demo.Name{1,3}$",
                 "--exclude-class",
                 "demo.\\d+$",
+                "--exclude-class",
+                "trailing\\",
                 "--exclude-class",
                 "demo.Other{1,3}$",
                 "--exclude-annotation",
