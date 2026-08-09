@@ -79,7 +79,11 @@ jobs:
             }
           ' CHANGELOG.md > release-notes.md
           test -s release-notes.md
-          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+          if release_state="$(gh release view "${GITHUB_REF_NAME}" --json isDraft --jq .isDraft 2>/dev/null)"; then
+            if [[ "${release_state}" != "true" ]]; then
+              echo "::error::A published GitHub release already exists for ${GITHUB_REF_NAME}; refusing to demote it on a rerun." >&2
+              exit 1
+            fi
             gh release edit "${GITHUB_REF_NAME}" \
               --title "${GITHUB_REF_NAME}" \
               --notes-file release-notes.md \
