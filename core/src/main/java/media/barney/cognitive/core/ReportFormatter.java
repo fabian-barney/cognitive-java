@@ -66,7 +66,9 @@ final class ReportFormatter {
             return "";
         }
         CognitiveReport selected = failuresOnly ? failuresOnly(report) : report;
-        return Objects.requireNonNull(FORMAT_RENDERERS.get(format))
+        return Objects.requireNonNull(
+                        FORMAT_RENDERERS.get(format),
+                        () -> "No renderer configured for report format: " + format)
                 .render(selected, omitRedundancy, includeExclusionAudit);
     }
 
