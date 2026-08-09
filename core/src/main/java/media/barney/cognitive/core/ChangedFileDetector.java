@@ -72,7 +72,7 @@ final class ChangedFileDetector {
         }
         try {
             return !AnalysisSourceRoots.containsSymbolicLink(projectRoot, path);
-        } catch (IOException | SecurityException exception) {
+        } catch (IOException | SecurityException | IllegalArgumentException exception) {
             return false;
         }
     }
