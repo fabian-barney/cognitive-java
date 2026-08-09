@@ -43,7 +43,7 @@ final class ChangedFileDetector {
     static List<Path> changedJavaFilesUnderSourceRoots(Path projectRoot) throws IOException, InterruptedException {
         return changedJavaFiles(projectRoot).stream()
                 .filter(ProductionSourceRoots::isUnderProductionSourceRoot)
-                .filter(ChangedFileDetector::isRegularFileWithoutFollowingLinks)
+                .filter(path -> isSafeChangedJavaFile(projectRoot, path))
                 .toList();
     }
 
@@ -51,8 +51,30 @@ final class ChangedFileDetector {
             throws IOException, InterruptedException {
         return changedJavaFiles(projectRoot).stream()
                 .filter(path -> AnalysisSourceRoots.isUnderAnySourceRoot(path, sourceRoots))
-                .filter(ChangedFileDetector::isRegularFileWithoutFollowingLinks)
+                .filter(path -> isSafeChangedJavaFile(projectRoot, path))
                 .toList();
+    }
+
+    static List<Path> changedJavaFilesUnderSourceRoots(
+            Path projectRoot,
+            List<Path> sourceRoots,
+            GitStatusProcessStarter processStarter
+    ) throws IOException, InterruptedException {
+        return changedJavaFiles(projectRoot, processStarter).stream()
+                .filter(path -> AnalysisSourceRoots.isUnderAnySourceRoot(path, sourceRoots))
+                .filter(path -> isSafeChangedJavaFile(projectRoot, path))
+                .toList();
+    }
+
+    private static boolean isSafeChangedJavaFile(Path projectRoot, Path path) {
+        if (!isRegularFileWithoutFollowingLinks(path)) {
+            return false;
+        }
+        try {
+            return !AnalysisSourceRoots.containsSymbolicLink(projectRoot, path);
+        } catch (IOException | SecurityException exception) {
+            return false;
+        }
     }
 
     private static Process startGitStatus(Path projectRoot) throws IOException {
@@ -75,25 +97,63 @@ final class ChangedFileDetector {
 
     private static int waitFor(Process process, CapturedOutput stdout, CapturedOutput stderr)
             throws IOException, InterruptedException {
-        if (!process.waitFor(GIT_STATUS_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
-            process.destroyForcibly();
-            if (!process.waitFor(TERMINATION_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
-                stdout.close();
-                stderr.close();
+        try {
+            if (!process.waitFor(GIT_STATUS_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
+                process.destroyForcibly();
+                if (!process.waitFor(TERMINATION_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
+                    stdout.close();
+                    stderr.close();
+                    stdout.await();
+                    stderr.await();
+                    throw new IOException("git status timed out after " + GIT_STATUS_TIMEOUT
+                            + " and could not be terminated within " + TERMINATION_TIMEOUT
+                            + formatCapturedOutput(stdout, stderr));
+                }
                 stdout.await();
                 stderr.await();
                 throw new IOException("git status timed out after " + GIT_STATUS_TIMEOUT
-                        + " and could not be terminated within " + TERMINATION_TIMEOUT
                         + formatCapturedOutput(stdout, stderr));
             }
             stdout.await();
             stderr.await();
-            throw new IOException("git status timed out after " + GIT_STATUS_TIMEOUT
-                    + formatCapturedOutput(stdout, stderr));
+            return process.exitValue();
+        } catch (InterruptedException exception) {
+            cleanupInterruptedProcess(process, stdout, stderr, exception);
+            Thread.currentThread().interrupt();
+            throw exception;
         }
-        stdout.await();
-        stderr.await();
-        return process.exitValue();
+    }
+
+    private static void cleanupInterruptedProcess(
+            Process process,
+            CapturedOutput stdout,
+            CapturedOutput stderr,
+            InterruptedException interruption) {
+        process.destroyForcibly();
+        closeCapturedOutput(stdout, interruption);
+        closeCapturedOutput(stderr, interruption);
+        awaitCapturedOutput(stdout, interruption);
+        awaitCapturedOutput(stderr, interruption);
+    }
+
+    private static void closeCapturedOutput(CapturedOutput output, InterruptedException interruption) {
+        try {
+            output.close();
+        } catch (IOException exception) {
+            interruption.addSuppressed(exception);
+        }
+    }
+
+    private static void awaitCapturedOutput(CapturedOutput output, InterruptedException interruption) {
+        boolean awaiting = true;
+        while (awaiting) {
+            try {
+                output.await();
+                awaiting = false;
+            } catch (InterruptedException exception) {
+                interruption.addSuppressed(exception);
+            }
+        }
     }
 
     private static String formatCapturedOutput(CapturedOutput stdout, CapturedOutput stderr) {
@@ -257,7 +317,9 @@ final class ChangedFileDetector {
                 capturedBytes = buffer.toByteArray();
                 wasTruncated = truncated;
             }
-            String text = new String(capturedBytes, StandardCharsets.UTF_8).trim();
+            String text = new String(capturedBytes, StandardCharsets.UTF_8)
+                    .replace("\0", "\\0")
+                    .trim();
             if (text.isEmpty()) {
                 return wasTruncated ? "[output truncated]" : "";
             }

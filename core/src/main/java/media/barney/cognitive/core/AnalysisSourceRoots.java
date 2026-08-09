@@ -138,7 +138,7 @@ final class AnalysisSourceRoots {
         }
     }
 
-    private static boolean containsSymbolicLink(Path root, Path path) throws IOException {
+    static boolean containsSymbolicLink(Path root, Path path) throws IOException {
         Path current = root;
         for (Path segment : root.relativize(path)) {
             current = current.resolve(segment);
