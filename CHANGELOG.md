@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.7.1 - 2026-08-30
+
+### Changed
+
+- Refreshed compatible quality-gate and build dependencies while retaining the existing public threshold behavior and interfaces.
+
+### Fixed
+
+- Hardened changed-file detection against invalid paths and expanded its regression coverage.
+- Remediated strict CRAP and Cognitive Complexity quality-gate findings and clarified report-rendering failures.
+
 ## 0.7.0 - 2026-08-09
 
 ### Added
