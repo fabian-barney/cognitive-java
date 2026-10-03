@@ -26,8 +26,8 @@ Jackson 3 is deferred because it changes APIs without improving the v1 contract.
 
 JUnit 6.1.3, JSpecify 1.0.1, Error Prone 2.50.0, JaCoCo 0.8.15, Maven Surefire
 3.6.0, Javadoc 3.12.0, GPG 3.2.8, Shade 3.6.2, Invoker 3.10.1, and Central
-Publishing 0.11.0 remain current compatible stable choices. Compiler 3.15.0,
-Source 3.4.0, JAR 3.5.0, and Plugin Tools 3.15.2 retain stable Maven 3-compatible
+Publishing 0.11.0 remain current compatible stable choices. Compiler 3.16.0,
+Source 3.4.0, JAR 3.5.1, and Plugin Tools 3.15.2 select stable Maven 3-compatible
 lines; upstream Maven 4 beta and release-candidate tooling is excluded.
 
 Runtime/build dependency metadata and upstream license files must be checked
