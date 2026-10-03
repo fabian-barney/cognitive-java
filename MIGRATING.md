@@ -14,6 +14,13 @@ Existing options, plugin configuration names, threshold `8`, and exit codes
 
 Artifacts still contain Java 17-compatible bytecode.
 
+## Metric correction
+
+Mixed Boolean expressions now count operator transitions in infix order.
+For example, `a || b && c || d && e` has four logical sequences; 0.7.1
+under-counted it as three. Re-run existing scans before upgrading, since this
+correction can increase scores while the default threshold remains `8`.
+
 ## TOON consumers
 
 The dependency refresh moves from JToon 1.0.9 to 2.0.4. Empty method arrays

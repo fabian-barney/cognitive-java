@@ -377,6 +377,30 @@ class JavaMethodParserTest {
     }
 
     @Test
+    void countsRepeatedOperatorTransitionsInInfixOrder() {
+        String source = """
+                class Sample {
+                    boolean alternating(boolean a, boolean b, boolean c, boolean d, boolean e) {
+                        return a || b && c || d && e;
+                    }
+                    boolean grouped(boolean a, boolean b, boolean c, boolean d) {
+                        return (a || b) && (c || d);
+                    }
+                    boolean negated(boolean a, boolean b, boolean c, boolean d) {
+                        return a && !(b || c) && d;
+                    }
+                    boolean arguments(boolean a, boolean b, boolean c, boolean d) {
+                        return check(a || b) && check(c || d);
+                    }
+                }
+                """;
+
+        List<MethodDescriptor> methods = JavaMethodParser.parse("Sample", source);
+
+        assertEquals(List.of(4, 3, 2, 3), methods.stream().map(MethodDescriptor::cognitiveComplexity).toList());
+    }
+
+    @Test
     void preservesMethodCallOwnerNamesForNestedAndUnsupportedReceivers() {
         String source = """
                 class Sample {

@@ -11,6 +11,8 @@
 
 ### Fixed
 
+- Corrected Cognitive Complexity counting for repeated Boolean operator transitions in infix order.
+- Restored Gradle 8.14 configuration-cache serialization and made nullable task-path checks explicit.
 - Made nullable report-path guards explicit and prevented Maven mojo subclass finalization after constructor failure.
 - Fixed Windows Gradle wrapper propagation of Java process failures and added an automated regression check.
 
