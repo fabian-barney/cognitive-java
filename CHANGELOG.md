@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Changed
+
+- Established the v1 CLI, plugin, and machine-report compatibility contract and explicit JDK/build-tool support matrix.
+- Refreshed compatible dependencies, including JToon 2.0.4, Jackson 2.22.3, and the crap-java 1.0.1 gate.
+- Adopted canonical TOON empty-array encoding and added migration guidance and report contract fixtures.
+- Enforced Java 17/Maven 3.9.0 minimums and added Linux/Windows compatibility coverage for supported toolchain boundaries.
+
+### Fixed
+
+- Avoided a reactor cycle through the project's own Maven plugin by making self-hosted quality profiles explicit; CI continues to require every module gate.
+- Corrected Cognitive Complexity counting for repeated Boolean operator transitions in infix order.
+- Restored Gradle 8.14 configuration-cache serialization and made nullable task-path checks explicit.
+- Made nullable report-path guards explicit and prevented Maven mojo subclass finalization after constructor failure.
+- Fixed Windows Gradle wrapper propagation of Java process failures and added an automated regression check.
+
 ## 0.7.1 - 2026-08-30
 
 ### Changed

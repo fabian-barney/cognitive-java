@@ -11,6 +11,55 @@ It analyzes Java source without running tests, generating coverage, or reading J
 - `maven-plugin`: Maven `check` goal
 - `gradle-plugin`: Gradle plugin exposing `cognitive-java-check`
 
+The `core` artifact supports the CLI and plugins. It is internal implementation,
+with no direct Java binary or source compatibility guarantee.
+
+## Requirements and support
+
+Artifacts contain Java 17-compatible bytecode. Analysis requires a full JDK
+with the `jdk.compiler` module, rather than a JRE. The supported combinations are:
+
+| Integration | Supported versions | Tested boundaries |
+| --- | --- | --- |
+| CLI | JDK 17, 21, and 25 | JDK 17, 21, and 25 |
+| Maven plugin | Maven 3.9.x on JDK 17, 21, or 25 | Maven 3.9.0 and 3.9.16 on each JDK |
+| Gradle plugin | Gradle 8.14.x on JDK 17/21; Gradle 9.8.x on JDK 17/21/25 | Gradle 8.14.5 and 9.8.0 |
+
+Java 17 and Maven 3.9.0 are enforced by the build and Maven plugin metadata.
+The wrapper uses Gradle 9.8.0. Gradle 8.14 does not run on JDK 25; use Gradle
+9.8.x for that combination. Linux and Windows are covered by CI. Other versions
+and operating systems may work but are outside the v1 support commitment.
+
+The parser uses the running JDK's javac syntax support. Run on a JDK that
+supports the Java syntax being analyzed. Preview-language support is not
+enabled; analysis does not resolve project dependencies or perform type checking.
+
+## Cognitive Complexity model
+
+The model follows the Cognitive Complexity paper's structural and nesting
+increments, with regression tests for its examples. Loops, conditional branches,
+catch clauses, ternaries, switches, logical operator sequences, labeled jumps,
+and recursion contribute to the score. Constructors, compact record constructors,
+and methods in local and anonymous classes are analyzed.
+
+Recursion detection uses source declarations and calls matched by owner, name,
+and argument count. It does not resolve overload parameter types, inheritance,
+or dynamic dispatch. Exact parity with a particular SonarJava release is not
+part of the compatibility promise.
+
+## v1 compatibility contract
+
+Semantic Versioning applies to CLI options and behavior, Maven and Gradle plugin
+configuration, process exit codes, and JSON, TOON, and JUnit report schemas.
+Within 1.x, existing names and meanings will not change incompatibly. Additions
+must preserve correct existing configurations and report consumers. Human-readable
+text is intended for people and is not a stable machine schema.
+
+The v1 TOON contract is fixed by the JToon 2.0.4 empty and populated report
+fixtures. An incompatible upstream encoding change requires a cognitive-java
+major version. See [Migrating from 0.7.1 to 1.0.0](MIGRATING.md) and
+[dependency selection](DEPENDENCIES.md).
+
 ## CLI
 
 Published artifact:

@@ -10,6 +10,25 @@ import org.junit.jupiter.api.Test;
 class ReportFormatterTest {
 
     @Test
+    void emptyToonReportUsesCanonicalArrayEncoding() {
+        CognitiveReport report = CognitiveReport.from(List.of(), 8);
+
+        assertEquals("status: passed\nthreshold: 8\nmethods: []",
+                ReportFormatter.format(report, ReportFormat.TOON, false, false, false));
+    }
+
+    @Test
+    void populatedToonReportPreservesV1ColumnsAndValues() {
+        assertEquals("""
+                status: failed
+                threshold: 8
+                methods[2]{status,cc,method,src,lineStart,lineEnd}:
+                  failed,16,high,src/main/java/demo/High.java,4,8
+                  passed,2,low,src/main/java/demo/Low.java,4,6""",
+                ReportFormatter.format(report(), ReportFormat.TOON, false, false, false));
+    }
+
+    @Test
     void formatsTextReportWithStatusThresholdAndSourcePaths() {
         String report = ReportFormatter.format(report(), ReportFormat.TEXT);
 

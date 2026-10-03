@@ -58,16 +58,21 @@ mvn -B -ntp verify
 
 The self-hosted gate jobs stay split by build tool so metric ownership still covers the full repository scope, including `gradle-plugin/src/main/java`.
 
-- `crap-java Gate` owns CRAP and coverage failures across `core`, `cli`, `maven-plugin`, and `gradle-plugin/src/main/java`
-- `cognitive-java Gate` owns Cognitive Complexity failures across the same source scope
-- `Gradle Plugin` validates plugin build and wrapper behavior only; it does not own metric failures
+The normal reactor build runs compilation, tests, and Maven integration fixtures.
+The project's own Maven plugin cannot be a reactor-wide build plugin: it depends
+on `core`, which would introduce a build-order cycle. Activate the CRAP and
+Cognitive Complexity profiles only in individual modules after installing the
+reactor. CI runs those separate gates for every production module before merge.
+
+- `verify / quality-crap-*` owns CRAP and coverage failures across all production modules.
+- `verify / quality-cognitive-*` owns Cognitive Complexity failures across the same source scope.
+- Gradle plugin functional tests validate plugin behavior and configuration-cache reuse.
 
 The build workflow now validates:
 
-- Maven verification on JDK `17`, `21`, and `25`
-- Windows Maven verification for path-sensitive behavior
-- Gradle plugin validation on Linux and Windows
-- uploaded JUnit sidecars from both self-hosted `cognitive-java Gate` scans
+- Maven `3.9.0` and `3.9.16` verification on JDK `17`, `21`, and `25`, on Linux and Windows
+- Gradle `8.14.5` on JDK `17`/`21` and `9.8.0` on JDK `17`/`21`/`25`, on Linux and Windows
+- uploaded JUnit sidecars from the self-hosted `verify / quality-cognitive-*` scans
 
 Run the self-hosted gates locally from the repository root with the built or published CLIs as needed:
 
