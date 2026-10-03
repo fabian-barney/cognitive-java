@@ -768,6 +768,10 @@ jobs:
         env:
           MAVEN_VERSION: ${{ matrix.maven }}
         run: |
+          runner_temp="$RUNNER_TEMP"
+          if command -v cygpath >/dev/null 2>&1; then
+            runner_temp="$(cygpath -u "$RUNNER_TEMP")"
+          fi
           archive="apache-maven-${MAVEN_VERSION}-bin.tar.gz"
           case "$MAVEN_VERSION" in
             3.9.0) expected_sha512="1ea149f4e48bc7b34d554aef86f948eca7df4e7874e30caf449f3708e4f8487c71a5e5c072a05f17c60406176ebeeaf56b5f895090c7346f8238e2da06cf6ecd" ;;
@@ -775,10 +779,10 @@ jobs:
             *) echo "No trusted checksum for Maven ${MAVEN_VERSION}" >&2; exit 1 ;;
           esac
           curl --fail --location --silent --show-error \
-            --output "${RUNNER_TEMP}/${archive}" \
+            --output "${runner_temp}/${archive}" \
             "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/${archive}"
-          echo "${expected_sha512}  ${RUNNER_TEMP}/${archive}" | sha512sum --check --status
-          tar -xzf "${RUNNER_TEMP}/${archive}" -C "${RUNNER_TEMP}"
+          echo "${expected_sha512}  ${runner_temp}/${archive}" | sha512sum --check --status
+          tar -xzf "${runner_temp}/${archive}" -C "${runner_temp}"
           echo "${RUNNER_TEMP}/apache-maven-${MAVEN_VERSION}/bin" >> "$GITHUB_PATH"
 
       - name: Verify selected toolchain
@@ -831,6 +835,11 @@ jobs:
 
       - name: Build Java 17 core artifact
         run: mvn -B -ntp -P!quality-gates-all -pl core -am -DskipTests package
+
+      - name: Verify Windows wrapper exit codes
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./.github/scripts/test-gradle-wrapper.ps1
 
       - name: Run Gradle plugin functional tests
         working-directory: gradle-plugin

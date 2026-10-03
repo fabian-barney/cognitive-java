@@ -12,6 +12,7 @@
 ### Fixed
 
 - Made nullable report-path guards explicit and prevented Maven mojo subclass finalization after constructor failure.
+- Fixed Windows Gradle wrapper propagation of Java process failures and added an automated regression check.
 
 ## 0.7.1 - 2026-08-30
 
