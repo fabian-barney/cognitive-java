@@ -107,7 +107,7 @@ def main() -> None:
     if {"alg": "SHA-256", "content": cli_digest} not in documents["cli"]["metadata"]["component"]["hashes"]:
         raise ValueError("CLI SBOM does not match the executable release JAR")
     for manifest, algorithm in (("SHA256SUMS", "sha256"), ("SHA512SUMS", "sha512")):
-        expected_lines = [f"{hashlib.new(algorithm, (assets / name).read_bytes()).hexdigest()}  {name}" for name in sorted(expected_payloads)]
+        expected_lines = [f"{hashlib.new(algorithm, (assets / name).read_bytes()).hexdigest()} *{name}" for name in sorted(expected_payloads)]
         if (assets / manifest).read_text(encoding="utf-8").splitlines() != expected_lines:
             raise ValueError(f"{manifest} does not cover exactly the five payloads with correct digests")
 

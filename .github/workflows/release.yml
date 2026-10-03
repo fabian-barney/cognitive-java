@@ -2,25 +2,114 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+      - "release/hotfix/*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  publish:
-    name: Publish Release
+  validate:
+    name: Detect Release Candidate
     runs-on: ubuntu-latest
+    permissions:
+      checks: read
+      contents: read
+    outputs:
+      release: ${{ steps.candidate.outputs.release }}
+      version: ${{ steps.candidate.outputs.version }}
+      tag: ${{ steps.candidate.outputs.tag }}
+      commit: ${{ steps.candidate.outputs.commit }}
+      source_branch: ${{ steps.candidate.outputs.source_branch }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
+      - name: Fetch protected release source refs
+        shell: bash
+        run: |
+          git fetch --force --tags origin \
+            '+refs/heads/main:refs/remotes/origin/main' \
+            '+refs/heads/release/hotfix/*:refs/remotes/origin/release/hotfix/*'
+
+      - name: Detect and validate release candidate
+        id: candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SIGNING_FINGERPRINT: E6BB1FB6EE83EEAB7B408C6B5CA409BD8EE61724
+        shell: bash
+        run: bash .github/scripts/prepare-release-candidate.sh
+
+      - name: Wait for required CI
+        if: steps.candidate.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT: ${{ steps.candidate.outputs.commit }}
+        shell: bash
+        run: bash .github/scripts/wait-for-required-check.sh
+
+  publish:
+    name: Publish Release
+    needs: validate
+    if: needs.validate.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: release
+    concurrency:
+      group: release-publication
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      checks: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    env:
+      RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+      RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+      RELEASE_COMMIT: ${{ needs.validate.outputs.commit }}
+      RELEASE_SOURCE_BRANCH: ${{ needs.validate.outputs.source_branch }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.validate.outputs.commit }}
+
+      - name: Fetch protected release source refs
+        shell: bash
+        run: |
+          git fetch --force --tags origin \
+            '+refs/heads/main:refs/remotes/origin/main' \
+            '+refs/heads/release/hotfix/*:refs/remotes/origin/release/hotfix/*'
+
+      - name: Revalidate release candidate after concurrency wait
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SIGNING_FINGERPRINT: E6BB1FB6EE83EEAB7B408C6B5CA409BD8EE61724
+        shell: bash
+        run: bash .github/scripts/prepare-release-candidate.sh
+
+      - name: Recheck exact-commit CI before publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/wait-for-required-check.sh
+
+      - name: Record release metadata
+        id: release
+        shell: bash
+        run: |
+          echo "version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+          source_date_epoch="$(git show -s --format=%ct "${RELEASE_COMMIT}")"
+          echo "SOURCE_DATE_EPOCH=${source_date_epoch}" >> "$GITHUB_ENV"
+
       - name: Set up JDK 17
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         env:
           MAVEN_CENTRAL_TOKEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_TOKEN_USERNAME }}
           MAVEN_CENTRAL_TOKEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASSWORD }}
@@ -35,16 +124,32 @@ jobs:
       - name: Set up Gradle wrapper permissions
         run: chmod +x gradle-plugin/gradlew
 
-      - name: Verify release version
-        shell: bash
-        run: bash ./.github/scripts/verify-version-alignment.sh --expected-version "${GITHUB_REF_NAME#v}"
-
       - name: Normalize and import GPG key
         env:
           MAVEN_GPG_PRIVATE_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
         shell: bash
         run: bash ./.github/scripts/import-release-gpg-key.sh
+
+      - name: Create and verify signed release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+          RELEASE_SIGNING_FINGERPRINT: E6BB1FB6EE83EEAB7B408C6B5CA409BD8EE61724
+        shell: bash
+        run: bash .github/scripts/create-signed-release-tag.sh
+
+      - name: Build and sign release assets
+        shell: bash
+        env:
+          RELEASE_SIGNING_FINGERPRINT: E6BB1FB6EE83EEAB7B408C6B5CA409BD8EE61724
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        run: |
+          mkdir -p target/release-assets
+          bash .github/scripts/build-release-payloads.sh target/release-assets
+          bash .github/scripts/sign-release-assets.sh target/release-assets
+          bash .github/scripts/verify-release-assets.sh target/release-assets \
+            "${{ steps.release.outputs.version }}"
 
       - name: Validate Maven release artifacts
         env:
@@ -54,14 +159,26 @@ jobs:
         run: >
           mvn -B -ntp -P!quality-gates-all,release
           -Dcentral.skipPublishing=true
+          "-Dproject.build.outputTimestamp=${SOURCE_DATE_EPOCH}"
           -pl .,cli,maven-plugin -am deploy
+
+      - name: Validate signed Gradle publication locally
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        working-directory: gradle-plugin
+        run: ./gradlew publishToMavenLocal
+
+      - name: Freeze and audit registry payloads
+        run: |
+          java .github/scripts/VerifyLegalContents.java
+          python3 .github/scripts/freeze-publication-artifacts.py "$RELEASE_VERSION" target/verified-publication
 
       - name: Create GitHub release draft
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_VERSION}"
           awk -v version="${version}" '
             $1 == "##" && $2 == version {
               found = 1
@@ -79,22 +196,15 @@ jobs:
             }
           ' CHANGELOG.md > release-notes.md
           test -s release-notes.md
-          if release_state="$(gh release view "${GITHUB_REF_NAME}" --json isDraft --jq .isDraft 2>/dev/null)"; then
-            if [[ "${release_state}" != "true" ]]; then
-              echo "::error::A published GitHub release already exists for ${GITHUB_REF_NAME}; refusing to demote it on a rerun." >&2
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            is_draft="$(gh release view "${RELEASE_TAG}" --json isDraft --jq .isDraft)"
+            if [ "${is_draft}" != "true" ]; then
+              echo "GitHub release ${RELEASE_TAG} already exists and is not a draft." >&2
               exit 1
             fi
-            gh release edit "${GITHUB_REF_NAME}" \
-              --title "${GITHUB_REF_NAME}" \
-              --notes-file release-notes.md \
-              --draft \
-              --verify-tag
+            gh release edit "${RELEASE_TAG}" --title "${RELEASE_TAG}" --notes-file release-notes.md --draft
           else
-            gh release create "${GITHUB_REF_NAME}" \
-              --title "${GITHUB_REF_NAME}" \
-              --notes-file release-notes.md \
-              --draft \
-              --verify-tag
+            gh release create "${RELEASE_TAG}" --verify-tag --draft --title "${RELEASE_TAG}" --notes-file release-notes.md
           fi
 
       - name: Publish Maven artifacts
@@ -102,7 +212,10 @@ jobs:
           MAVEN_CENTRAL_TOKEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_TOKEN_USERNAME }}
           MAVEN_CENTRAL_TOKEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
-        run: mvn -B -ntp -P!quality-gates-all,release -pl .,cli,maven-plugin -am deploy
+        run: >
+          mvn -B -ntp -P!quality-gates-all,release
+          "-Dproject.build.outputTimestamp=${SOURCE_DATE_EPOCH}"
+          -pl .,cli,maven-plugin -am deploy
 
       - name: Publish Gradle plugin artifacts to Maven Central
         env:
@@ -119,6 +232,7 @@ jobs:
         shell: bash
         run: |
           auth="$(printf '%s:%s' "${MAVEN_CENTRAL_TOKEN_USERNAME}" "${MAVEN_CENTRAL_TOKEN_PASSWORD}" | base64 -w 0)"
+          echo "::add-mask::${auth}"
           curl --fail --request POST \
             --header "Authorization: Bearer ${auth}" \
             "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/media.barney?publishing_type=automatic"
@@ -131,11 +245,85 @@ jobs:
         working-directory: gradle-plugin
         run: ./gradlew publishPlugins -Pgradle.publish.key="${GRADLE_PUBLISH_KEY}" -Pgradle.publish.secret="${GRADLE_PUBLISH_SECRET}"
 
+      - name: Verify public registries and fresh consumers
+        shell: bash
+        run: bash .github/scripts/verify-publication.sh "$RELEASE_VERSION" target/verified-publication
+
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: |
+            core/target/cognitive-java-core-${{ steps.release.outputs.version }}.jar
+            target/release-assets/cognitive-java-${{ steps.release.outputs.version }}.jar
+            maven-plugin/target/cognitive-java-maven-plugin-${{ steps.release.outputs.version }}.jar
+            gradle-plugin/build/libs/cognitive-java-gradle-plugin-${{ steps.release.outputs.version }}.jar
+
+      - name: Attest core SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: core/target/cognitive-java-core-${{ steps.release.outputs.version }}.jar
+          sbom-path: target/release-assets/cognitive-java-core-${{ steps.release.outputs.version }}.cdx.json
+
+      - name: Attest CLI SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: target/release-assets/cognitive-java-${{ steps.release.outputs.version }}.jar
+          sbom-path: target/release-assets/cognitive-java-cli-${{ steps.release.outputs.version }}.cdx.json
+
+      - name: Attest Maven plugin SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: maven-plugin/target/cognitive-java-maven-plugin-${{ steps.release.outputs.version }}.jar
+          sbom-path: target/release-assets/cognitive-java-maven-plugin-${{ steps.release.outputs.version }}.cdx.json
+
+      - name: Attest Gradle plugin SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: gradle-plugin/build/libs/cognitive-java-gradle-plugin-${{ steps.release.outputs.version }}.jar
+          sbom-path: target/release-assets/cognitive-java-gradle-plugin-${{ steps.release.outputs.version }}.cdx.json
+
+      - name: Upload signed release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: gh release upload "${RELEASE_TAG}" target/release-assets/* --clobber
+
+      - name: Verify release assets and attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          verification_root="$(mktemp -d)"
+          gh release download "${RELEASE_TAG}" --dir "$verification_root"
+          diff --recursive --brief target/release-assets "$verification_root"
+          for component in core cli maven-plugin gradle-plugin; do
+            subject="target/verified-publication/cognitive-java-$component-$RELEASE_VERSION.jar"
+            gh attestation verify "$subject" --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+              --source-digest "$RELEASE_COMMIT" --signer-digest "$RELEASE_COMMIT" \
+              --source-ref "refs/heads/$RELEASE_SOURCE_BRANCH" --deny-self-hosted-runners
+            gh attestation verify "$subject" --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+              --source-digest "$RELEASE_COMMIT" --signer-digest "$RELEASE_COMMIT" \
+              --source-ref "refs/heads/$RELEASE_SOURCE_BRANCH" --deny-self-hosted-runners \
+              --predicate-type https://cyclonedx.org/bom --format json \
+              > "$verification_root/$component-attestation.json"
+            python3 - "$verification_root/$component-attestation.json" \
+              "target/release-assets/cognitive-java-$component-$RELEASE_VERSION.cdx.json" <<'PY'
+          import json
+          import sys
+          results = json.load(open(sys.argv[1], encoding='utf-8'))
+          expected = json.load(open(sys.argv[2], encoding='utf-8'))
+          if not any(result['verificationResult']['statement']['predicate'] == expected for result in results):
+              raise SystemExit('Attested SBOM does not match the verified release SBOM')
+          PY
+          done
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
-        run: gh release edit "${GITHUB_REF_NAME}" --draft=false --verify-tag
+        run: gh release edit "${RELEASE_TAG}" --draft=false --latest
 
       - name: Clean up imported GPG home
         if: always()

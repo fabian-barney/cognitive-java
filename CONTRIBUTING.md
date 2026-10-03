@@ -66,6 +66,8 @@ The build workflow now validates:
 
 - Maven `3.9.0` and `3.9.16` verification on JDK `17`, `21`, and `25`, on Linux and Windows
 - Gradle `8.14.5` on JDK `17`/`21` and `9.8.0` on JDK `17`/`21`/`25`, on Linux and Windows
+- signed publication preflight, reproducible archives, SBOM contracts, and release controls
+- the required `verify / required` aggregate check
 - uploaded JUnit sidecars from the self-hosted `verify / quality-cognitive-*` scans
 
 Run the self-hosted gates locally from the repository root with the built or published CLIs as needed:
@@ -75,3 +77,5 @@ mvn -B -pl cli -am package
 java -jar cli/target/cognitive-java-cli-<version>.jar --format text core/src/main/java cli/src/main/java maven-plugin/src/main/java
 java -jar cli/target/cognitive-java-cli-<version>.jar --format text gradle-plugin/src/main/java
 ```
+
+See [RELEASING.md](RELEASING.md) for protected version-bump releases and failure recovery.

@@ -60,6 +60,10 @@ fixtures. An incompatible upstream encoding change requires a cognitive-java
 major version. See [Migrating from 0.7.1 to 1.0.0](MIGRATING.md) and
 [dependency selection](DEPENDENCIES.md).
 
+Release downloads include signed checksums and component SBOMs. See
+[artifact verification](RELEASE-ARTIFACTS.md) and the [release runbook](RELEASING.md)
+for signatures, provenance, and SBOM attestations.
+
 ## CLI
 
 Published artifact:
