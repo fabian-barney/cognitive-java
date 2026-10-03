@@ -87,16 +87,16 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
         junitReportState = localStateFileProvider("junit-report.path");
         outputState = localStateFileProvider("primary-output.path");
         stateLock = globalStateFileProvider("state.lock");
-        internalExecutionMarkerRootProviders = getProject().getRootProject().getAllprojects().stream()
+        internalExecutionMarkerRootProviders = new ArrayList<>(getProject().getRootProject().getAllprojects().stream()
                 .map(project -> project.getLayout().getBuildDirectory().dir("tmp/cognitive-java"))
-                .toList();
-        internalRememberedStateRootPaths = getProject().getRootProject().getAllprojects().stream()
+                .toList());
+        internalRememberedStateRootPaths = new ArrayList<>(getProject().getRootProject().getAllprojects().stream()
                 .flatMap(project -> {
                     Path stateRoot = projectCacheRoot(project).resolve("cognitive-java");
                     return Stream.of(stateRoot, stateRoot.resolve(projectStateName(project)));
                 })
                 .distinct()
-                .toList();
+                .toList());
         getThreshold().convention(DEFAULT_THRESHOLD);
         getAgent().convention(false);
         getFormat().convention(getAgent().map(agent -> agent ? "toon" : "none"));
