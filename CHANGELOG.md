@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Avoid a reactor cycle through the project's own Maven plugin by making self-hosted quality profiles explicit; CI continues to require every module gate.
+
 ### Changed
 
 - Established the v1 CLI, plugin, and machine-report compatibility contract and explicit JDK/build-tool support matrix.

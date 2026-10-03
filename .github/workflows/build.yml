@@ -796,7 +796,7 @@ jobs:
           [[ "$mvn_version" == "Apache Maven ${MAVEN_VERSION}"* ]]
 
       - name: Run CLI and Maven plugin functional tests
-        run: mvn -B -ntp -P!quality-gates-all clean verify
+        run: mvn -B -ntp clean verify
 
       - name: Verify Java 17 bytecode
         shell: bash
