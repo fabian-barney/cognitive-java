@@ -13,6 +13,9 @@
   <artifactId>cognitive-java-maven-plugin</artifactId>
   <name>cognitive-java Maven Plugin</name>
   <description>Native Maven plugin exposing the cognitive-java check goal.</description>
+  <prerequisites>
+    <maven>${maven.minimum.version}</maven>
+  </prerequisites>
 
   <dependencies>
     <dependency>
@@ -28,13 +31,13 @@
     <dependency>
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-plugin-api</artifactId>
-      <version>3.9.12</version>
+      <version>${maven.api.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-core</artifactId>
-      <version>3.9.12</version>
+      <version>${maven.api.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -58,6 +61,8 @@
         <version>3.15.2</version>
         <configuration>
           <goalPrefix>cognitive-java</goalPrefix>
+          <requiredJavaVersion>${java.minimum.version}</requiredJavaVersion>
+          <requiredMavenVersion>${maven.minimum.version}</requiredMavenVersion>
         </configuration>
         <executions>
           <execution>

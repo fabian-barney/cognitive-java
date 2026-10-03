@@ -44,19 +44,23 @@
 
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
+    <java.minimum.version>17</java.minimum.version>
+    <maven.minimum.version>3.9.0</maven.minimum.version>
+    <maven.api.version>3.9.16</maven.api.version>
+    <maven.enforcer.plugin.version>3.6.3</maven.enforcer.plugin.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <crap-java.version>0.6.3</crap-java.version>
+    <crap-java.version>1.0.1</crap-java.version>
     <jacoco.version>0.8.15</jacoco.version>
     <junit.version>6.1.3</junit.version>
     <maven.surefire.plugin.version>3.6.0</maven.surefire.plugin.version>
     <jspecify.version>1.0.1</jspecify.version>
-    <jtoon.version>1.0.9</jtoon.version>
-    <jackson.version>2.22.2</jackson.version>
+    <jtoon.version>2.0.4</jtoon.version>
+    <jackson.version>2.22.3</jackson.version>
     <errorprone.version>2.50.0</errorprone.version>
-    <nullaway.version>0.13.8</nullaway.version>
+    <nullaway.version>0.14.2</nullaway.version>
     <nullaway.annotated.packages>media.barney.cognitive</nullaway.annotated.packages>
-    <spotbugs.version>4.9.8</spotbugs.version>
-    <spotbugs.maven.plugin.version>4.9.8.3</spotbugs.maven.plugin.version>
+    <spotbugs.version>4.10.4</spotbugs.version>
+    <spotbugs.maven.plugin.version>4.10.4.1</spotbugs.maven.plugin.version>
     <maven.source.plugin.version>3.4.0</maven.source.plugin.version>
     <maven.javadoc.plugin.version>3.12.0</maven.javadoc.plugin.version>
     <maven.gpg.plugin.version>3.2.8</maven.gpg.plugin.version>
@@ -92,6 +96,33 @@
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>${maven.enforcer.plugin.version}</version>
+        <executions>
+          <execution>
+            <id>enforce-supported-build-toolchain</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <failFast>true</failFast>
+              <rules>
+                <requireJavaVersion>
+                  <version>[${java.minimum.version},)</version>
+                  <message>cognitive-java requires JDK ${java.minimum.version} or newer.</message>
+                </requireJavaVersion>
+                <requireMavenVersion>
+                  <version>[${maven.minimum.version},)</version>
+                  <message>cognitive-java requires Maven ${maven.minimum.version} or newer.</message>
+                </requireMavenVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>

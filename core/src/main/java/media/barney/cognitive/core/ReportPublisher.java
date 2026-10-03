@@ -13,8 +13,9 @@ final class ReportPublisher {
 
     static void publish(CognitiveReport report, ReportOptions options, PrintStream out) throws IOException {
         publishPrimary(report, options, out);
-        if (options.junitReportPath() != null) {
-            write(options.junitReportPath(), ReportFormatter.format(report, ReportFormat.JUNIT, false, false, true));
+        Path junitReportPath = options.junitReportPath();
+        if (junitReportPath != null) {
+            write(junitReportPath, ReportFormatter.format(report, ReportFormat.JUNIT, false, false, true));
         }
     }
 
@@ -27,11 +28,12 @@ final class ReportPublisher {
                 options.omitRedundancy(),
                 options.includePrimaryExclusionAudit()
         );
-        if (options.outputPath() == null) {
+        Path outputPath = options.outputPath();
+        if (outputPath == null) {
             out.print(content);
             return;
         }
-        write(options.outputPath(), content);
+        write(outputPath, content);
     }
 
     private static void write(Path path, String content) throws IOException {

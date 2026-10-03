@@ -20,7 +20,7 @@ import java.util.Objects;
 import java.util.Set;
 
 @Mojo(name = "check", defaultPhase = LifecyclePhase.VERIFY, aggregator = true, threadSafe = true)
-public class CognitiveJavaCheckMojo extends AbstractMojo {
+public final class CognitiveJavaCheckMojo extends AbstractMojo {
 
     private static final Set<String> VALID_FORMATS = Set.of("toon", "json", "text", "junit", "none");
 
