@@ -19,6 +19,9 @@ report APIs fit that floor. Maven APIs remain in the supported Maven 3.9 line.
 | Maven API | 3.9.16 | Latest stable supported Maven line |
 | Maven Enforcer | 3.6.3 | Enforce Java 17 and Maven 3.9.0 minimums |
 | Gradle wrapper | 9.8.0 | Current stable, with trusted distribution checksum |
+| CycloneDX Maven plugin | 2.9.3 | Generate component SBOMs using schema 1.6 |
+| CycloneDX Gradle plugin | 3.4.1 | Inventory the resolved Gradle runtime dependencies |
+| Maven AntRun plugin | 3.2.0 | Package the exact project license in release archives |
 
 JToon's separately named `tools.jackson` 3.x APIs can coexist with the
 `com.fasterxml.jackson` 2.x report renderer. Migrating the report renderer to

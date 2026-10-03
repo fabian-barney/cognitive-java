@@ -3,6 +3,9 @@ import com.github.spotbugs.snom.Effort
 import com.github.spotbugs.snom.SpotBugsTask
 import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
+import org.cyclonedx.Version
+import org.cyclonedx.gradle.CyclonedxDirectTask
+import org.gradle.api.tasks.bundling.AbstractArchiveTask
 import org.gradle.api.DefaultTask
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.file.RegularFileProperty
@@ -23,6 +26,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 plugins {
     `java-gradle-plugin`
+    id("org.cyclonedx.bom") version "3.4.1"
     id("com.gradle.plugin-publish") version "2.1.1"
     id("com.github.spotbugs") version "6.5.11"
     id("net.ltgt.errorprone") version "5.1.1" apply false
@@ -96,6 +100,18 @@ val verifyCoreJar = tasks.register<VerifyCoreJarTask>("verifyCoreJar") {
 tasks.withType<JavaCompile>().configureEach {
     dependsOn(verifyCoreJar)
     options.release.set(17)
+}
+
+tasks.withType<AbstractArchiveTask>().configureEach {
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+}
+
+tasks.withType<Jar>().configureEach {
+    from(layout.projectDirectory.file("../LICENSE")) {
+        into("META-INF")
+        rename("LICENSE", "LICENSE-cognitive-java")
+    }
 }
 
 dependencies {
@@ -184,6 +200,16 @@ tasks.named<Jar>("jar") {
     dependsOn(verifyCoreJar)
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from(zipTree(coreJar))
+}
+
+tasks.named<CyclonedxDirectTask>("cyclonedxDirectBom") {
+    schemaVersion = Version.VERSION_16
+    includeBomSerialNumber = false
+    includeLicenseText = false
+    includeBuildSystem = false
+    includeConfigs = listOf("runtimeClasspath")
+    jsonOutput = layout.buildDirectory.file("reports/sbom/cognitive-java-gradle-plugin-${projectVersion}.cdx.json")
+    xmlOutput.convention(null as RegularFile?)
 }
 
 publishing {

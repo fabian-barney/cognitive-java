@@ -1,0 +1,6 @@
+*.sh text eol=lf
+*.py text eol=lf
+gradle-plugin/gradlew text eol=lf
+LICENSE text eol=lf
+**/META-INF/LICENSE-* text eol=lf
+*.asc text eol=lf
