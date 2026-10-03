@@ -80,8 +80,8 @@ Run the self-hosted gates locally from the repository root with the built or pub
 
 ```bash
 mvn -B -pl cli -am package
-java -jar cli/target/cognitive-java-cli-<version>.jar --format text core/src/main/java cli/src/main/java maven-plugin/src/main/java
-java -jar cli/target/cognitive-java-cli-<version>.jar --format text gradle-plugin/src/main/java
+java -jar cli/target/cognitive-java-cli-1.0.0.jar --format text core/src/main/java cli/src/main/java maven-plugin/src/main/java
+java -jar cli/target/cognitive-java-cli-1.0.0.jar --format text gradle-plugin/src/main/java
 ```
 
 See [RELEASING.md](RELEASING.md) for protected version-bump releases and failure recovery.

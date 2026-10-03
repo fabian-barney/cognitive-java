@@ -68,13 +68,18 @@ for signatures, provenance, and SBOM attestations.
 
 Published artifact:
 
-- `media.barney:cognitive-java-cli:<version>`
+- `media.barney:cognitive-java-cli:1.0.0`
 
-Run the shaded jar after downloading it from Maven Central:
+Run the shaded JAR after downloading it from [Maven Central](https://repo.maven.apache.org/maven2/media/barney/cognitive-java-cli/1.0.0/cognitive-java-cli-1.0.0.jar):
 
 ```bash
-java -jar cognitive-java-cli-<version>.jar [args...]
+java -jar cognitive-java-cli-1.0.0.jar [args...]
 ```
+
+The [v1.0.0 GitHub release](https://github.com/fabian-barney/cognitive-java/releases/tag/v1.0.0)
+also ships [cognitive-java-1.0.0.jar](https://github.com/fabian-barney/cognitive-java/releases/download/v1.0.0/cognitive-java-1.0.0.jar)
+with identical executable bytes. Follow [artifact verification](RELEASE-ARTIFACTS.md)
+for signed checksums, detached signatures, SBOMs, and attestations.
 
 Usage:
 
@@ -101,13 +106,13 @@ Usage:
 Examples:
 
 ```bash
-java -jar cognitive-java-cli-<version>.jar
-java -jar cognitive-java-cli-<version>.jar --changed
-java -jar cognitive-java-cli-<version>.jar --format json --output target/cognitive-java/report.json
-java -jar cognitive-java-cli-<version>.jar --format none --junit-report target/cognitive-java/TEST-cognitive-java.xml
-java -jar cognitive-java-cli-<version>.jar --agent
-java -jar cognitive-java-cli-<version>.jar --threshold 12
-java -jar cognitive-java-cli-<version>.jar --exclude 'module-a/**' --exclude-class '(^|.*\\.)Dagger[^.]*$'
+java -jar cognitive-java-cli-1.0.0.jar
+java -jar cognitive-java-cli-1.0.0.jar --changed
+java -jar cognitive-java-cli-1.0.0.jar --format json --output target/cognitive-java/report.json
+java -jar cognitive-java-cli-1.0.0.jar --format none --junit-report target/cognitive-java/TEST-cognitive-java.xml
+java -jar cognitive-java-cli-1.0.0.jar --agent
+java -jar cognitive-java-cli-1.0.0.jar --threshold 12
+java -jar cognitive-java-cli-1.0.0.jar --exclude 'module-a/**' --exclude-class '(^|.*\\.)Dagger[^.]*$'
 ```
 
 ## Report Behavior
@@ -155,13 +160,13 @@ Custom source roots are resolved against the analysis root. Directory traversal 
 Published plugin:
 
 - plugin id `media.barney.cognitive-java`
-- version `<version>`
+- version `1.0.0`
 
 Apply the plugin:
 
 ```kotlin
 plugins {
-    id("media.barney.cognitive-java") version "<version>"
+    id("media.barney.cognitive-java") version "1.0.0"
 }
 ```
 
@@ -197,13 +202,13 @@ cognitiveJava {
 }
 ```
 
-Published releases work through the Gradle Plugin Portal without extra `pluginManagement` configuration. The marker publication is `media.barney.cognitive-java:media.barney.cognitive-java.gradle.plugin:<version>` and resolves to `media.barney:cognitive-java-gradle-plugin:<version>`.
+Published releases work through the Gradle Plugin Portal without extra `pluginManagement` configuration. The marker publication is `media.barney.cognitive-java:media.barney.cognitive-java.gradle.plugin:1.0.0` and resolves to `media.barney:cognitive-java-gradle-plugin:1.0.0`.
 
 ## Maven Plugin
 
 Published artifact:
 
-- `media.barney:cognitive-java-maven-plugin:<version>`
+- `media.barney:cognitive-java-maven-plugin:1.0.0`
 
 Bind the `check` goal:
 
@@ -213,7 +218,7 @@ Bind the `check` goal:
     <plugin>
       <groupId>media.barney</groupId>
       <artifactId>cognitive-java-maven-plugin</artifactId>
-      <version>&lt;version&gt;</version>
+      <version>1.0.0</version>
       <executions>
         <execution>
           <goals>

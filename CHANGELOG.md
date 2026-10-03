@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.0 - 2026-10-03
+
 ### Added
 
 - Added protected automatic version-bump releases, immutable signed tags, exact-commit CI checks, and artifact attestations.
