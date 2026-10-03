@@ -256,9 +256,7 @@
   <profiles>
     <profile>
       <id>quality-gates-all</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
+      <!-- Explicit module-level gates avoid a reactor cycle through our own plugin. -->
       <build>
         <plugins>
           <plugin>
