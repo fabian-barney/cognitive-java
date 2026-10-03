@@ -532,26 +532,26 @@ final class JavaMethodParser {
             }
         }
 
-        private void scanLogicalExpression(Tree tree, int nesting, LogicalSequence currentOperator) {
+        private LogicalSequence scanLogicalExpression(Tree tree, int nesting, LogicalSequence currentOperator) {
             LogicalExpressionHandler handler = LOGICAL_EXPRESSION_HANDLERS.get(tree.getKind());
             if (handler != null) {
-                handler.scan(this, tree, nesting, currentOperator);
-                return;
+                return handler.scan(this, tree, nesting, currentOperator);
             }
             scan(tree, nesting);
+            return currentOperator;
         }
 
-        private static void scanParenthesized(MethodAnalysisScanner scanner,
+        private static LogicalSequence scanParenthesized(MethodAnalysisScanner scanner,
                                               Tree tree,
                                               int nesting,
                                               LogicalSequence currentOperator) {
-            scanner.scanLogicalExpression(
+            return scanner.scanLogicalExpression(
                     ((ParenthesizedTree) tree).getExpression(),
                     nesting,
                     currentOperator);
         }
 
-        private static void scanLogicalComplement(MethodAnalysisScanner scanner,
+        private static LogicalSequence scanLogicalComplement(MethodAnalysisScanner scanner,
                                                   Tree tree,
                                                   int nesting,
                                                   LogicalSequence currentOperator) {
@@ -559,19 +559,21 @@ final class JavaMethodParser {
                     ((UnaryTree) tree).getExpression(),
                     nesting,
                     LogicalSequence.NONE);
+            return currentOperator;
         }
 
-        private static void scanLogicalBinary(MethodAnalysisScanner scanner,
+        private static LogicalSequence scanLogicalBinary(MethodAnalysisScanner scanner,
                                               Tree tree,
                                               int nesting,
                                               LogicalSequence currentOperator) {
             BinaryTree binaryTree = (BinaryTree) tree;
+            LogicalSequence previousOperator = scanner.scanLogicalExpression(
+                    binaryTree.getLeftOperand(), nesting, currentOperator);
             LogicalSequence operator = logicalSequence(binaryTree.getKind());
-            if (currentOperator != operator) {
+            if (previousOperator != operator) {
                 scanner.incrementFundamental();
             }
-            scanner.scanLogicalExpression(binaryTree.getLeftOperand(), nesting, operator);
-            scanner.scanLogicalExpression(binaryTree.getRightOperand(), nesting, operator);
+            return scanner.scanLogicalExpression(binaryTree.getRightOperand(), nesting, operator);
         }
 
         private @Nullable MethodCall methodCall(MethodInvocationTree node) {
@@ -626,7 +628,7 @@ final class JavaMethodParser {
 
         @FunctionalInterface
         private interface LogicalExpressionHandler {
-            void scan(MethodAnalysisScanner scanner,
+            LogicalSequence scan(MethodAnalysisScanner scanner,
                       Tree tree,
                       int nesting,
                       LogicalSequence currentOperator);
