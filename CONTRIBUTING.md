@@ -58,6 +58,12 @@ mvn -B -ntp verify
 
 The self-hosted gate jobs stay split by build tool so metric ownership still covers the full repository scope, including `gradle-plugin/src/main/java`.
 
+The normal reactor build runs compilation, tests, and Maven integration fixtures.
+The project's own Maven plugin cannot be a reactor-wide build plugin: it depends
+on `core`, which would introduce a build-order cycle. Activate the CRAP and
+Cognitive Complexity profiles only in individual modules after installing the
+reactor. CI runs those separate gates for every production module before merge.
+
 - `verify / quality-crap-*` owns CRAP and coverage failures across all production modules.
 - `verify / quality-cognitive-*` owns Cognitive Complexity failures across the same source scope.
 - Gradle plugin functional tests validate plugin behavior and configuration-cache reuse.
