@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set +x
+repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 if [ -z "${MAVEN_GPG_PRIVATE_KEY:-}" ]; then
   echo "::error::MAVEN_GPG_PRIVATE_KEY is required." >&2
@@ -27,8 +29,10 @@ generate_env_delimiter_suffix() {
     return
   fi
 
-  if command -v python3 >/dev/null 2>&1; then
-    python3 - <<'PY'
+  local python_command=python3
+  [[ -z "${MSYSTEM:-}" ]] || python_command=python
+  if command -v "$python_command" >/dev/null 2>&1; then
+    "$python_command" - <<'PY'
 import uuid
 print(uuid.uuid4())
 PY
@@ -100,8 +104,15 @@ if [ "$import_succeeded" -ne 1 ]; then
   exit 1
 fi
 
-printf '%s' "$MAVEN_GPG_PASSPHRASE" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 \
-  --armor --export-secret-keys > "$normalized_key"
+expected_fingerprint="${RELEASE_SIGNING_FINGERPRINT:-E6BB1FB6EE83EEAB7B408C6B5CA409BD8EE61724}"
+mapfile -t primary_fingerprints < <(gpg --batch --with-colons --list-secret-keys \
+  | awk -F: '$1 == "sec" { primary = 1; next } $1 == "fpr" && primary { print $10; primary = 0 }')
+if [[ ${#primary_fingerprints[@]} -ne 1 || "${primary_fingerprints[0]}" != "$expected_fingerprint" ]]; then
+  echo "::error::Imported private key must contain exactly the expected release identity $expected_fingerprint." >&2
+  exit 1
+fi
+
+bash "$repository_root/.github/scripts/gpg-release-sign.sh" --armor --export-secret-keys "$expected_fingerprint" > "$normalized_key"
 
 if [ ! -s "$normalized_key" ]; then
   echo "::error::Failed to export an armored private key after importing MAVEN_GPG_PRIVATE_KEY." >&2

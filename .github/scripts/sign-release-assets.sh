@@ -26,8 +26,8 @@ fi
 
 (
   cd "$assets_directory"
-  sha256sum "${payloads[@]}" > SHA256SUMS
-  sha512sum "${payloads[@]}" > SHA512SUMS
+  sha256sum --binary "${payloads[@]}" > SHA256SUMS
+  sha512sum --binary "${payloads[@]}" > SHA512SUMS
 )
 
 signing_key_arguments=()

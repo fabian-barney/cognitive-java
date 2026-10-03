@@ -8,7 +8,9 @@ fi
 
 assets_directory="$(cd "$1" && pwd)"
 version="$2"
-python3 .github/scripts/verify-release-assets.py "$assets_directory" "$version"
+python_command=python3
+[[ -z "${MSYSTEM:-}" ]] || python_command=python
+"$python_command" .github/scripts/verify-release-assets.py "$assets_directory" "$version"
 
 (
   cd "$assets_directory"

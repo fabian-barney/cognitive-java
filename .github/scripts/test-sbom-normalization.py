@@ -133,7 +133,7 @@ class SbomNormalizationTest(unittest.TestCase):
 
             payloads = sorted(path for path in assets.iterdir())
             for manifest, algorithm in (("SHA256SUMS", "sha256"), ("SHA512SUMS", "sha512")):
-                (assets / manifest).write_text("".join(f"{hashlib.new(algorithm, path.read_bytes()).hexdigest()}  {path.name}\n" for path in payloads), encoding="utf-8")
+                (assets / manifest).write_text("".join(f"{hashlib.new(algorithm, path.read_bytes()).hexdigest()} *{path.name}\n" for path in payloads), encoding="utf-8")
             for path in list(assets.iterdir()):
                 (assets / f"{path.name}.asc").write_text("signature verified by shell preflight", encoding="utf-8")
 

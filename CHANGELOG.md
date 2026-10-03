@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added protected automatic version-bump releases, immutable signed tags, exact-commit CI checks, and artifact attestations.
+
 - Added four CycloneDX 1.6 component SBOMs, signed checksum manifests, and a 14-asset GitHub bundle.
 - Added deterministic artifact identities, clean-build reproducibility checks, and archive license audits.
 
