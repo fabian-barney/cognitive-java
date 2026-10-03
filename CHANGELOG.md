@@ -2,8 +2,6 @@
 
 ## Unreleased
 
-- Avoid a reactor cycle through the project's own Maven plugin by making self-hosted quality profiles explicit; CI continues to require every module gate.
-
 ### Changed
 
 - Established the v1 CLI, plugin, and machine-report compatibility contract and explicit JDK/build-tool support matrix.
@@ -13,6 +11,7 @@
 
 ### Fixed
 
+- Avoided a reactor cycle through the project's own Maven plugin by making self-hosted quality profiles explicit; CI continues to require every module gate.
 - Corrected Cognitive Complexity counting for repeated Boolean operator transitions in infix order.
 - Restored Gradle 8.14 configuration-cache serialization and made nullable task-path checks explicit.
 - Made nullable report-path guards explicit and prevented Maven mojo subclass finalization after constructor failure.
