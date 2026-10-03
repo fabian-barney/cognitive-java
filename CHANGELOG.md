@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+
+- Added four CycloneDX 1.6 component SBOMs, signed checksum manifests, and a 14-asset GitHub bundle.
+- Added deterministic artifact identities, clean-build reproducibility checks, and archive license audits.
+
 ### Changed
 
 - Established the v1 CLI, plugin, and machine-report compatibility contract and explicit JDK/build-tool support matrix.
@@ -12,6 +17,8 @@
 ### Fixed
 
 - Made nullable report-path guards explicit and prevented Maven mojo subclass finalization after constructor failure.
+- Restored Gradle 8.14 configuration-cache serialization and made nullable task-path checks explicit.
+- Retained project and third-party license/notice contents in binary, source, and Javadoc archives.
 - Fixed Windows Gradle wrapper propagation of Java process failures and added an automated regression check.
 
 ## 0.7.1 - 2026-08-30

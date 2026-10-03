@@ -670,10 +670,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: "17"
@@ -681,6 +681,10 @@ jobs:
           server-id: central
           server-username: MAVEN_CENTRAL_TOKEN_USERNAME
           server-password: MAVEN_CENTRAL_TOKEN_PASSWORD
+
+      - name: Record reproducible build timestamp
+        shell: bash
+        run: echo "SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD)" >> "$GITHUB_ENV"
 
       - name: Generate temporary GPG key for signing preflight
         shell: bash
@@ -696,7 +700,9 @@ jobs:
           Passphrase: ${MAVEN_GPG_PASSPHRASE}
           %commit
           EOF
-          gpg --batch --pinentry-mode loopback --generate-key gpg-batch.txt
+          gpg --batch --pinentry-mode loopback \
+            --faked-system-time "$((SOURCE_DATE_EPOCH - 1))!" \
+            --generate-key gpg-batch.txt
           {
             echo "MAVEN_GPG_PRIVATE_KEY<<EOF"
             gpg --batch --pinentry-mode loopback --passphrase "${MAVEN_GPG_PASSPHRASE}" --armor --export-secret-keys preflight@example.com
@@ -721,6 +727,7 @@ jobs:
           "-Dmaven.repo.local=${PREFLIGHT_MAVEN_REPO_LOCAL}"
           -P!quality-gates-all,release
           -Dcentral.skipPublishing=true
+          "-Dproject.build.outputTimestamp=${SOURCE_DATE_EPOCH}"
           -pl .,cli,maven-plugin -am deploy
 
       - name: Clean Maven release workspace
@@ -734,6 +741,19 @@ jobs:
       - name: Validate Gradle plugin publication metadata
         working-directory: gradle-plugin
         run: ./gradlew test validatePlugins publishToMavenLocal
+
+      - name: Verify archive legal content
+        run: java .github/scripts/VerifyLegalContents.java
+
+      - name: Build signed release asset bundle
+        shell: bash
+        run: |
+          release_assets="${RUNNER_TEMP}/release-assets"
+          mkdir "$release_assets"
+          bash .github/scripts/build-release-payloads.sh "$release_assets"
+          bash .github/scripts/sign-release-assets.sh "$release_assets"
+          bash .github/scripts/verify-release-assets.sh "$release_assets" \
+            "$(python3 .github/scripts/project-version.py)"
 
       - name: Verify legacy package registry references are gone
         shell: bash
@@ -857,3 +877,67 @@ jobs:
                   for failure in case.findall('failure'):
                       print(case.get('name'), failure.text)
           PY
+
+  reproducibility:
+    name: verify / reproducible-release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Compare two clean release builds
+        shell: bash
+        run: |
+          repository_root="${GITHUB_WORKSPACE}"
+          source_date_epoch="$(git -C "$repository_root" show -s --format=%ct HEAD)"
+          reproducibility_root="$(mktemp -d)"
+          export GNUPGHOME="$(mktemp -d)"
+          export MAVEN_GPG_PASSPHRASE=reproducibility-only
+          gpg --batch --pinentry-mode loopback \
+            --passphrase "$MAVEN_GPG_PASSPHRASE" \
+            --faked-system-time "$((source_date_epoch - 1))!" \
+            --quick-generate-key "cognitive-java reproducibility <reproducibility@example.com>" \
+            rsa2048 sign 0
+          for build_name in first second; do
+            build_root="${reproducibility_root}/${build_name}"
+            mkdir "$build_root"
+            git -C "$repository_root" archive HEAD | tar -x -C "$build_root"
+            (
+              cd "$build_root"
+              export SOURCE_DATE_EPOCH="$source_date_epoch"
+              bash .github/scripts/build-release-payloads.sh target/release-assets
+              bash .github/scripts/sign-release-assets.sh target/release-assets
+              version="$(python3 .github/scripts/project-version.py)"
+              bash .github/scripts/verify-release-assets.sh target/release-assets "$version"
+              find core/target cli/target maven-plugin/target gradle-plugin/build/libs target/release-assets \
+                -maxdepth 1 -type f \
+                \( -name '*.jar' -o -name '*.cdx.json' \
+                  -o -name 'SHA256SUMS' -o -name 'SHA512SUMS' \) -print0 \
+                | LC_ALL=C sort -z | xargs -0 sha256sum > release-digests.sha256
+            )
+          done
+          diff --unified "${reproducibility_root}/first/release-digests.sha256" \
+            "${reproducibility_root}/second/release-digests.sha256"
+
+  sbom-tests:
+    name: verify / SBOM contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Verify deterministic identities and embedded component inventories
+        run: |
+          python3 -B .github/scripts/test-sbom-normalization.py
+          python3 -B .github/scripts/test-component-sboms.py
