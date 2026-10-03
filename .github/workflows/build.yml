@@ -755,7 +755,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
@@ -819,7 +819,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
@@ -844,3 +844,16 @@ jobs:
       - name: Run Gradle plugin functional tests
         working-directory: gradle-plugin
         run: gradle --version && gradle clean test validatePlugins
+
+      - name: Show failing Gradle test diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib
+          import xml.etree.ElementTree as ET
+          for path in pathlib.Path('gradle-plugin/build/test-results/test').glob('TEST-*.xml'):
+              for case in ET.parse(path).findall('.//testcase'):
+                  for failure in case.findall('failure'):
+                      print(case.get('name'), failure.text)
+          PY

@@ -992,7 +992,8 @@ public abstract class CognitiveJavaCheckTask extends DefaultTask {
     }
 
     private boolean isOwnerLink(Path path) {
-        return path.getFileName() != null && path.getFileName().toString().endsWith(".owner");
+        Path fileName = path.getFileName();
+        return fileName != null && fileName.toString().endsWith(".owner");
     }
 
     private String defaultJunitReportRelativePath() {
