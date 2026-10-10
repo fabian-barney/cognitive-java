@@ -8,7 +8,7 @@ report APIs fit that floor. Maven APIs remain in the supported Maven 3.9 line.
 
 | Component | Version | Decision |
 | --- | --- | --- |
-| JToon | 2.0.4 | Current stable; freeze the resulting v1 TOON encoding |
+| JToon | 2.0.5 | Latest Java 17-compatible release; preserve the frozen v1 TOON encoding |
 | Jackson BOM | 2.22.3 | Current stable 2.x; preserve the existing JSON/XML renderer APIs |
 | crap-java gate | 1.0.1 | Current stable release with the existing strict threshold |
 | NullAway | 0.14.2 | Current stable; verify with Error Prone on JDK 25 |
@@ -18,7 +18,7 @@ report APIs fit that floor. Maven APIs remain in the supported Maven 3.9 line.
 | Error Prone Gradle plugin | 5.1.1 | Current stable integration |
 | Maven API | 3.9.16 | Latest stable supported Maven line |
 | Maven Enforcer | 3.6.3 | Enforce Java 17 and Maven 3.9.0 minimums |
-| Gradle wrapper | 9.8.0 | Current stable, with trusted distribution checksum |
+| Gradle wrapper | 9.8.1 | Current stable, with trusted distribution checksum |
 | CycloneDX Maven plugin | 2.9.3 | Generate component SBOMs using schema 1.6 |
 | CycloneDX Gradle plugin | 3.4.1 | Inventory the resolved Gradle runtime dependencies |
 | Maven AntRun plugin | 3.2.0 | Package the exact project license in release archives |
@@ -26,6 +26,10 @@ report APIs fit that floor. Maven APIs remain in the supported Maven 3.9 line.
 JToon's separately named `tools.jackson` 3.x APIs can coexist with the
 `com.fasterxml.jackson` 2.x report renderer. Migrating the report renderer to
 Jackson 3 is deferred because it changes APIs without improving the v1 contract.
+
+JToon 2.0.6 and 2.0.7 ship Java 21 bytecode and are incompatible with the
+Java 17 consumer floor. JToon 2.0.5 retains Java 17 bytecode and passes the
+unchanged report-format contract fixtures; newer absolute versions are deferred.
 
 JUnit 6.1.3, JSpecify 1.0.1, Error Prone 2.50.0, JaCoCo 0.8.15, Maven Surefire
 3.6.0, Javadoc 3.12.0, GPG 3.2.8, Shade 3.6.2, Invoker 3.10.1, and Central

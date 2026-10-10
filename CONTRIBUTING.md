@@ -71,7 +71,7 @@ reactor. CI runs those separate gates for every production module before merge.
 The build workflow now validates:
 
 - Maven `3.9.0` and `3.9.16` verification on JDK `17`, `21`, and `25`, on Linux and Windows
-- Gradle `8.14.5` on JDK `17`/`21` and `9.8.0` on JDK `17`/`21`/`25`, on Linux and Windows
+- Gradle `8.14.5` on JDK `17`/`21` and `9.8.1` on JDK `17`/`21`/`25`, on Linux and Windows
 - signed publication preflight, reproducible archives, SBOM contracts, and release controls
 - the required `verify / required` aggregate check
 - uploaded JUnit sidecars from the self-hosted `verify / quality-cognitive-*` scans

@@ -56,7 +56,8 @@ must preserve correct existing configurations and report consumers. Human-readab
 text is intended for people and is not a stable machine schema.
 
 The v1 TOON contract is fixed by the JToon 2.0.4 empty and populated report
-fixtures. An incompatible upstream encoding change requires a cognitive-java
+fixtures. The selected JToon 2.0.5 dependency reproduces those unchanged fixtures.
+An incompatible upstream encoding change requires a cognitive-java
 major version. See [Migrating from 0.7.1 to 1.0.0](MIGRATING.md) and
 [dependency selection](DEPENDENCIES.md).
 

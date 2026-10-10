@@ -58,7 +58,7 @@ and Woodstox are Apache-2.0. Their resolved versions and available license
 metadata appear in the SBOMs. Jackson also bundles FastDoubleParser and Schubfach
 code, whose license files and notices must survive shading.
 
-The curated license copies come from the tagged [JToon 2.0.4 license](https://github.com/toon-format/jtoon/blob/v2.0.4/LICENSE)
+The curated license copies come from the tagged [JToon 2.0.5 license](https://github.com/toon-format/toon-java/blob/v2.0.5/LICENSE)
 and [stax2-api 4.3.0 license](https://github.com/FasterXML/stax2-api/blob/stax2-api-4.3.0/LICENSE).
 The latter provides the full BSD terms missing from its packaged license stub.
 
