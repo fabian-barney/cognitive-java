@@ -26,9 +26,9 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 plugins {
     `java-gradle-plugin`
-    id("org.cyclonedx.bom") version "3.4.1"
-    id("com.gradle.plugin-publish") version "2.1.1"
-    id("com.github.spotbugs") version "6.5.11"
+    id("org.cyclonedx.bom") version "3.5.1"
+    id("com.gradle.plugin-publish") version "2.2.1"
+    id("com.github.spotbugs") version "6.5.13"
     id("net.ltgt.errorprone") version "5.1.1" apply false
     jacoco
     signing
@@ -61,6 +61,7 @@ abstract class VerifyCoreJarTask : DefaultTask() {
 }
 
 val projectVersion = version.toString()
+val javaRelease = parentPomProperty("maven.compiler.release").toInt()
 val coreJar = layout.projectDirectory.file("../core/target/cognitive-java-core-${projectVersion}.jar")
 val junitVersion = parentPomProperty("junit.version")
 val jspecifyVersion = parentPomProperty("jspecify.version")
@@ -73,13 +74,15 @@ val spotbugsVersion = parentPomProperty("spotbugs.version")
 val qualityNullaway = providers.gradleProperty("qualityNullaway").map(String::toBoolean).getOrElse(false)
 val gpgPrivateKey = providers.environmentVariable("MAVEN_GPG_PRIVATE_KEY")
 val gpgPassphrase = providers.environmentVariable("MAVEN_GPG_PASSPHRASE")
+val gpgHome = providers.environmentVariable("GNUPGHOME").filter(String::isNotBlank)
+val signingEnabled = !gpgPrivateKey.orNull.isNullOrBlank()
 val mavenCentralTokenUsername = providers.gradleProperty("mavenCentralTokenUsername")
     .orElse(providers.environmentVariable("MAVEN_CENTRAL_TOKEN_USERNAME"))
 val mavenCentralTokenPassword = providers.gradleProperty("mavenCentralTokenPassword")
     .orElse(providers.environmentVariable("MAVEN_CENTRAL_TOKEN_PASSWORD"))
 
 jacoco {
-    toolVersion = "0.8.15"
+    toolVersion = parentPomProperty("jacoco.version")
 }
 
 spotbugs {
@@ -99,7 +102,12 @@ val verifyCoreJar = tasks.register<VerifyCoreJarTask>("verifyCoreJar") {
 
 tasks.withType<JavaCompile>().configureEach {
     dependsOn(verifyCoreJar)
-    options.release.set(17)
+    options.release.set(javaRelease)
+}
+
+java {
+    sourceCompatibility = JavaVersion.toVersion(javaRelease)
+    targetCompatibility = JavaVersion.toVersion(javaRelease)
 }
 
 tasks.withType<AbstractArchiveTask>().configureEach {
@@ -117,9 +125,11 @@ tasks.withType<Jar>().configureEach {
 dependencies {
     implementation(files(coreJar.asFile))
     implementation("dev.toonformat:jtoon:$jtoonVersion")
-    implementation(platform("com.fasterxml.jackson:jackson-bom:$jacksonVersion"))
-    implementation("com.fasterxml.jackson.core:jackson-databind")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
+    implementation(platform("tools.jackson:jackson-bom:$jacksonVersion"))
+    implementation("tools.jackson.core:jackson-databind")
+    implementation("tools.jackson.dataformat:jackson-dataformat-xml")
+    implementation("com.fasterxml.woodstox:woodstox-core:${parentPomProperty("woodstox.version")}")
+    implementation("org.codehaus.woodstox:stax2-api:${parentPomProperty("stax2.version")}")
     compileOnly("org.jspecify:jspecify:$jspecifyVersion")
     if (qualityNullaway) {
         add("errorprone", "com.google.errorprone:error_prone_core:$errorproneVersion")
@@ -254,15 +264,20 @@ publishing {
 }
 
 signing {
-    val key = gpgPrivateKey.orNull
-    if (!key.isNullOrBlank()) {
-        useInMemoryPgpKeys(key, gpgPassphrase.orNull)
+    if (signingEnabled) {
+        val importedHome = gpgHome.orNull
+            ?: throw GradleException("Import the signing key and export GNUPGHOME before signing publications.")
+        val passphrase = gpgPassphrase.orNull
+            ?: throw GradleException("MAVEN_GPG_PASSPHRASE is required for signing publications.")
+        project.extra["signing.gnupg.homeDir"] = importedHome
+        project.extra["signing.gnupg.passphrase"] = passphrase
+        useGpgCmd()
         sign(publishing.publications)
     }
 }
 
 tasks.withType<Sign>().configureEach {
-    onlyIf { !gpgPrivateKey.orNull.isNullOrBlank() }
+    onlyIf { signingEnabled }
 }
 
 gradlePlugin {

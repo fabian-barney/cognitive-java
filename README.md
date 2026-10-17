@@ -16,19 +16,22 @@ with no direct Java binary or source compatibility guarantee.
 
 ## Requirements and support
 
-Artifacts contain Java 17-compatible bytecode. Analysis requires a full JDK
+These requirements describe the unreleased next major version on `main`.
+The published 1.0.0 support policy is retained in the historical migration guide.
+
+Artifacts contain Java 21-compatible bytecode. Analysis requires a full JDK
 with the `jdk.compiler` module, rather than a JRE. The supported combinations are:
 
 | Integration | Supported versions | Tested boundaries |
 | --- | --- | --- |
-| CLI | JDK 17, 21, and 25 | JDK 17, 21, and 25 |
-| Maven plugin | Maven 3.9.x on JDK 17, 21, or 25 | Maven 3.9.0 and 3.9.16 on each JDK |
-| Gradle plugin | Gradle 8.14.x on JDK 17/21; Gradle 9.8.x on JDK 17/21/25 | Gradle 8.14.5 and 9.8.1 |
+| CLI | JDK 21 and 25 | JDK 21 and 25 |
+| Maven plugin | Maven 3.9.x (minimum 3.9.16) and 3.10.x on JDK 21/25 | Maven 3.9.16 and 3.10.0 on each JDK |
+| Gradle plugin | Gradle 8.14.x (minimum 8.14.6) on JDK 21; Gradle 9.8.x on JDK 21/25 | Gradle 8.14.6 and 9.8.1 |
 
-Java 17 and Maven 3.9.0 are enforced by the build and Maven plugin metadata.
+Java 21 and Maven 3.9.16 are enforced by the build and Maven plugin metadata.
 The wrapper uses Gradle 9.8.1. Gradle 8.14 does not run on JDK 25; use Gradle
 9.8.x for that combination. Linux and Windows are covered by CI. Other versions
-and operating systems may work but are outside the v1 support commitment.
+and operating systems may work but are outside the support commitment.
 
 The parser uses the running JDK's javac syntax support. Run on a JDK that
 supports the Java syntax being analyzed. Preview-language support is not
@@ -55,11 +58,10 @@ Within 1.x, existing names and meanings will not change incompatibly. Additions
 must preserve correct existing configurations and report consumers. Human-readable
 text is intended for people and is not a stable machine schema.
 
-The v1 TOON contract is fixed by the JToon 2.0.4 empty and populated report
-fixtures. The selected JToon 2.0.5 dependency reproduces those unchanged fixtures.
-An incompatible upstream encoding change requires a cognitive-java
-major version. See [Migrating from 0.7.1 to 1.0.0](MIGRATING.md) and
-[dependency selection](DEPENDENCIES.md).
+The next major release adopts JToon 3.0.0 semantics. Empty and populated report
+fixtures retain their field names and meanings; consumers must review encoding
+changes when upgrading from the frozen v1 contract. See [migration guidance](MIGRATING.md)
+and [dependency selection](DEPENDENCIES.md).
 
 Release downloads include signed checksums and component SBOMs. See
 [artifact verification](RELEASE-ARTIFACTS.md) and the [release runbook](RELEASING.md)

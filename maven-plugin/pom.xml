@@ -43,7 +43,7 @@
     <dependency>
       <groupId>org.apache.maven.plugin-tools</groupId>
       <artifactId>maven-plugin-annotations</artifactId>
-      <version>3.15.2</version>
+      <version>3.16.0</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -62,7 +62,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-plugin-plugin</artifactId>
-        <version>3.15.2</version>
+        <version>3.16.0</version>
         <configuration>
           <goalPrefix>cognitive-java</goalPrefix>
           <requiredJavaVersion>${java.minimum.version}</requiredJavaVersion>
@@ -90,6 +90,10 @@
           </pomIncludes>
           <filterProperties>
             <project.version>${project.version}</project.version>
+            <java.release>${maven.compiler.release}</java.release>
+            <junit.version>${junit.version}</junit.version>
+            <surefire.version>${maven.surefire.plugin.version}</surefire.version>
+            <compiler.version>${maven.compiler.plugin.version}</compiler.version>
           </filterProperties>
           <streamLogs>true</streamLogs>
           <goals>

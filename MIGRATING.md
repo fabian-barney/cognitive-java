@@ -1,10 +1,33 @@
-# Migrating from 0.7.1 to 1.0.0
+# Migration guide
+
+## Preparing for the next major release (unreleased)
+
+The development branch requires a full JDK 21 or 25 and emits Java 21 bytecode.
+Java 17 is no longer supported. This is a project support decision, not a claim
+that all Java 17 vendors have ended support. Parsing still requires `jdk.compiler`
+and accepts the running JDK's supported non-preview syntax.
+
+Use Maven 3.9.16 or 3.10.0, Gradle 8.14.6 on JDK 21, or Gradle 9.8.1 on JDK 21/25.
+Maven 4 and non-LTS JDKs are outside the support commitment. Use current security
+patches within supported JDK lines.
+
+JToon advances to 3.0.0 and reporting uses Jackson 3.2.3 throughout. Review TOON
+encoding changes and downstream snapshots before upgrading; the canonical empty
+and populated examples below still pass. JSON and JUnit field meanings, ordering,
+null omission, escaping, thresholds, exclusions, sidecars, and CLI exit codes
+remain unchanged. The core artifact remains internal implementation.
+
+The project version stays 1.0.0 until a separate release-preparation change.
+These requirements describe unreleased sources, not a changed promise for the
+already published 1.0.0 artifacts. The dated migration below describes that release.
+
+## Historical: migrating from 0.7.1 to 1.0.0 (2026-10-03)
 
 Version 1.0.0 establishes the CLI and build-plugin compatibility contract.
 Existing options, plugin configuration names, threshold `8`, and exit codes
 `0` through `3` retain their meanings. The core Java artifact remains internal.
 
-## Runtime and build tools
+### Runtime and build tools
 
 - Use a full JDK 17, 21, or 25. The parser needs `jdk.compiler` and accepts
   the running JDK's supported non-preview source syntax.
@@ -14,14 +37,14 @@ Existing options, plugin configuration names, threshold `8`, and exit codes
 
 Artifacts still contain Java 17-compatible bytecode.
 
-## Metric correction
+### Metric correction
 
 Mixed Boolean expressions now count operator transitions in infix order.
 For example, `a || b && c || d && e` has four logical sequences; 0.7.1
 under-counted it as three. Re-run existing scans before upgrading, since this
 correction can increase scores while the default threshold remains `8`.
 
-## TOON consumers
+### TOON consumers
 
 The dependency refresh moves from JToon 1.0.9 to 2.0.4. Empty method arrays
 use the canonical representation:
@@ -46,7 +69,7 @@ Update TOON parser fixtures and snapshots after reviewing these encoding changes
 JSON and JUnit field meanings stay unchanged. Primary-report filtering still
 does not filter the complete JUnit sidecar.
 
-## Verify the upgrade
+### Verify the upgrade
 
 Exercise an empty source selection and a populated project with every report
 format consumed by automation. Check exit code `0` for success, `1` for invalid

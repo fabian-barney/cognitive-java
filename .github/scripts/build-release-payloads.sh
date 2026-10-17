@@ -39,8 +39,10 @@ mvn -B -ntp -P'!quality-gates-all,release' \
 chmod +x gradle-plugin/gradlew
 (
   cd gradle-plugin
-  ./gradlew --no-daemon clean assemble sourcesJar javadocJar cyclonedxDirectBom -x test
+  ./gradlew --no-daemon clean assemble sourcesJar javadocJar cyclonedxDirectBom generateMetadataFileForPluginMavenPublication -x test
 )
+
+python3 .github/scripts/verify-runtime-baseline.py --gradle-metadata gradle-plugin/build/publications/pluginMaven/module.json
 
 mkdir -p "$output_directory"
 if find "$output_directory" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then
