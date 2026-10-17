@@ -25,9 +25,21 @@ runs:
           runner_temp="$(cygpath -u "$RUNNER_TEMP")"
         fi
         installation_root="$(mktemp -d "${runner_temp}/cognitive-java-maven.XXXXXX")"
-        curl --fail --location --silent --show-error --retry 3 --retry-all-errors \
-          --output "${installation_root}/${archive}" \
-          "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/${archive}"
+        downloaded=false
+        for distribution_url in \
+          "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/${archive}" \
+          "https://dlcdn.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/${archive}" \
+          "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/${archive}"; do
+          if curl --fail --location --silent --show-error --retry 2 --retry-all-errors \
+            --output "${installation_root}/${archive}" "$distribution_url"; then
+            downloaded=true
+            break
+          fi
+        done
+        if [[ "$downloaded" != true ]]; then
+          echo "Unable to download supported Maven ${MAVEN_VERSION}." >&2
+          exit 1
+        fi
         echo "${expected_sha512}  ${installation_root}/${archive}" | sha512sum --check --status
         tar -xzf "${installation_root}/${archive}" -C "$installation_root"
         maven_bin="${installation_root}/apache-maven-${MAVEN_VERSION}/bin"

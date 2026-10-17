@@ -91,7 +91,7 @@ class CognitiveJavaGradlePluginFunctionalTest {
 
         assertTrue(first.getOutput().contains("Configuration cache entry stored."));
         assertTrue(second.getOutput().contains("Configuration cache entry reused."));
-        TaskOutcome outcome = second.task(":cognitive-java-check").getOutcome();
+        TaskOutcome outcome = Objects.requireNonNull(second.task(":cognitive-java-check")).getOutcome();
         assertTrue(outcome == TaskOutcome.SUCCESS || outcome == TaskOutcome.UP_TO_DATE);
     }
 
@@ -116,7 +116,7 @@ class CognitiveJavaGradlePluginFunctionalTest {
 
         assertTrue(first.getOutput().contains("Configuration cache entry stored."));
         assertTrue(second.getOutput().contains("Configuration cache entry reused."));
-        TaskOutcome outcome = second.task(":cognitive-java-check").getOutcome();
+        TaskOutcome outcome = Objects.requireNonNull(second.task(":cognitive-java-check")).getOutcome();
         assertTrue(outcome == TaskOutcome.SUCCESS || outcome == TaskOutcome.UP_TO_DATE);
         assertTrue(Files.exists(tempDir.resolve("build/reports/cognitive-java/report.json")));
         assertFalse(Files.exists(tempDir.resolve("build/reports/cognitive-java/custom-junit.xml")));
