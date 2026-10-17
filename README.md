@@ -16,8 +16,8 @@ with no direct Java binary or source compatibility guarantee.
 
 ## Requirements and support
 
-These requirements describe the unreleased next major version on `main`.
-The published 1.0.0 support policy is retained in the historical migration guide.
+These requirements describe version 2.0.0.
+The published v1 support policy is retained in the historical migration guide.
 
 Artifacts contain Java 21-compatible bytecode. Analysis requires a full JDK
 with the `jdk.compiler` module, rather than a JRE. The supported combinations are:
@@ -50,15 +50,15 @@ and argument count. It does not resolve overload parameter types, inheritance,
 or dynamic dispatch. Exact parity with a particular SonarJava release is not
 part of the compatibility promise.
 
-## v1 compatibility contract
+## v2 compatibility contract
 
 Semantic Versioning applies to CLI options and behavior, Maven and Gradle plugin
 configuration, process exit codes, and JSON, TOON, and JUnit report schemas.
-Within 1.x, existing names and meanings will not change incompatibly. Additions
+Within 2.x, existing names and meanings will not change incompatibly. Additions
 must preserve correct existing configurations and report consumers. Human-readable
 text is intended for people and is not a stable machine schema.
 
-The next major release adopts JToon 3.0.0 semantics. Empty and populated report
+Version 2.0.0 adopts JToon 3.0.0 semantics. Empty and populated report
 fixtures retain their field names and meanings; consumers must review encoding
 changes when upgrading from the frozen v1 contract. See [migration guidance](MIGRATING.md)
 and [dependency selection](DEPENDENCIES.md).
@@ -71,16 +71,16 @@ for signatures, provenance, and SBOM attestations.
 
 Published artifact:
 
-- `media.barney:cognitive-java-cli:1.0.0`
+- `media.barney:cognitive-java-cli:2.0.0`
 
-Run the shaded JAR after downloading it from [Maven Central](https://repo.maven.apache.org/maven2/media/barney/cognitive-java-cli/1.0.0/cognitive-java-cli-1.0.0.jar):
+Run the shaded JAR after downloading it from [Maven Central](https://repo.maven.apache.org/maven2/media/barney/cognitive-java-cli/2.0.0/cognitive-java-cli-2.0.0.jar):
 
 ```bash
-java -jar cognitive-java-cli-1.0.0.jar [args...]
+java -jar cognitive-java-cli-2.0.0.jar [args...]
 ```
 
-The [v1.0.0 GitHub release](https://github.com/fabian-barney/cognitive-java/releases/tag/v1.0.0)
-also ships [cognitive-java-1.0.0.jar](https://github.com/fabian-barney/cognitive-java/releases/download/v1.0.0/cognitive-java-1.0.0.jar)
+The [v2.0.0 GitHub release](https://github.com/fabian-barney/cognitive-java/releases/tag/v2.0.0)
+also ships [cognitive-java-2.0.0.jar](https://github.com/fabian-barney/cognitive-java/releases/download/v2.0.0/cognitive-java-2.0.0.jar)
 with identical executable bytes. Follow [artifact verification](RELEASE-ARTIFACTS.md)
 for signed checksums, detached signatures, SBOMs, and attestations.
 
@@ -109,13 +109,13 @@ Usage:
 Examples:
 
 ```bash
-java -jar cognitive-java-cli-1.0.0.jar
-java -jar cognitive-java-cli-1.0.0.jar --changed
-java -jar cognitive-java-cli-1.0.0.jar --format json --output target/cognitive-java/report.json
-java -jar cognitive-java-cli-1.0.0.jar --format none --junit-report target/cognitive-java/TEST-cognitive-java.xml
-java -jar cognitive-java-cli-1.0.0.jar --agent
-java -jar cognitive-java-cli-1.0.0.jar --threshold 12
-java -jar cognitive-java-cli-1.0.0.jar --exclude 'module-a/**' --exclude-class '(^|.*\\.)Dagger[^.]*$'
+java -jar cognitive-java-cli-2.0.0.jar
+java -jar cognitive-java-cli-2.0.0.jar --changed
+java -jar cognitive-java-cli-2.0.0.jar --format json --output target/cognitive-java/report.json
+java -jar cognitive-java-cli-2.0.0.jar --format none --junit-report target/cognitive-java/TEST-cognitive-java.xml
+java -jar cognitive-java-cli-2.0.0.jar --agent
+java -jar cognitive-java-cli-2.0.0.jar --threshold 12
+java -jar cognitive-java-cli-2.0.0.jar --exclude 'module-a/**' --exclude-class '(^|.*\\.)Dagger[^.]*$'
 ```
 
 ## Report Behavior
@@ -163,13 +163,13 @@ Custom source roots are resolved against the analysis root. Directory traversal 
 Published plugin:
 
 - plugin id `media.barney.cognitive-java`
-- version `1.0.0`
+- version `2.0.0`
 
 Apply the plugin:
 
 ```kotlin
 plugins {
-    id("media.barney.cognitive-java") version "1.0.0"
+    id("media.barney.cognitive-java") version "2.0.0"
 }
 ```
 
@@ -205,13 +205,13 @@ cognitiveJava {
 }
 ```
 
-Published releases work through the Gradle Plugin Portal without extra `pluginManagement` configuration. The marker publication is `media.barney.cognitive-java:media.barney.cognitive-java.gradle.plugin:1.0.0` and resolves to `media.barney:cognitive-java-gradle-plugin:1.0.0`.
+Published releases work through the Gradle Plugin Portal without extra `pluginManagement` configuration. The marker publication is `media.barney.cognitive-java:media.barney.cognitive-java.gradle.plugin:2.0.0` and resolves to `media.barney:cognitive-java-gradle-plugin:2.0.0`.
 
 ## Maven Plugin
 
 Published artifact:
 
-- `media.barney:cognitive-java-maven-plugin:1.0.0`
+- `media.barney:cognitive-java-maven-plugin:2.0.0`
 
 Bind the `check` goal:
 
@@ -221,7 +221,7 @@ Bind the `check` goal:
     <plugin>
       <groupId>media.barney</groupId>
       <artifactId>cognitive-java-maven-plugin</artifactId>
-      <version>1.0.0</version>
+      <version>2.0.0</version>
       <executions>
         <execution>
           <goals>

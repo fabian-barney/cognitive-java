@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.0.0 - 2026-10-17
+
 ### Breaking changes
 
 - Require a full JDK 21 or 25 and emit Java 21 bytecode; retire Java 17 support.

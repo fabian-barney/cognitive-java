@@ -1,6 +1,6 @@
-# Dependency selection for the next major release
+# Dependency selection for cognitive-java 2.0.0
 
-This unreleased baseline implements issue #118, assessed on 2026-10-17.
+This release baseline implements issue #118, assessed on 2026-10-17.
 The previous Java 17 and v1 reporting constraints are superseded on `main`;
 the published 1.0.0 contract remains documented in MIGRATING.md.
 
@@ -21,7 +21,7 @@ plugin prereleases are excluded; Java 27 remains unverified.
 
 | Component | Version | Decision |
 | --- | --- | --- |
-| JToon | 3.0.0 | Current Java 21 line; review next-major TOON semantics |
+| JToon | 3.0.0 | Current Java 21 line; review v2 TOON semantics |
 | Jackson BOM / implementations | 3.2.3 | One implementation family shared with JToon |
 | Jackson annotations | 2.22 | Shared upstream namespace intentionally remains com.fasterxml.jackson |
 | Woodstox / stax2-api | 7.3.0 / 4.3.2 | Explicitly align Maven and Gradle XML runtimes |
