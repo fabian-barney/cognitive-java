@@ -1,8 +1,8 @@
 # Migration guide
 
-## Preparing for the next major release (unreleased)
+## Migrating from 1.0.0 to 2.0.0 (2026-10-17)
 
-The development branch requires a full JDK 21 or 25 and emits Java 21 bytecode.
+Version 2.0.0 requires a full JDK 21 or 25 and emits Java 21 bytecode.
 Java 17 is no longer supported. This is a project support decision, not a claim
 that all Java 17 vendors have ended support. Parsing still requires `jdk.compiler`
 and accepts the running JDK's supported non-preview syntax.
@@ -17,9 +17,11 @@ and populated examples below still pass. JSON and JUnit field meanings, ordering
 null omission, escaping, thresholds, exclusions, sidecars, and CLI exit codes
 remain unchanged. The core artifact remains internal implementation.
 
-The project version stays 1.0.0 until a separate release-preparation change.
-These requirements describe unreleased sources, not a changed promise for the
-already published 1.0.0 artifacts. The dated migration below describes that release.
+Update CLI filenames, Maven coordinates, and the Gradle plugin version to
+`2.0.0` together. Existing CLI options, plugin configuration names, threshold `8`,
+and exit codes `0` through `3` retain their meanings. Verify empty and populated
+reports in every format used by your automation, and review TOON snapshots.
+The historical migration below preserves the published 1.0.0 support policy.
 
 ## Historical: migrating from 0.7.1 to 1.0.0 (2026-10-03)
 
