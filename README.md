@@ -23,10 +23,10 @@ with the `jdk.compiler` module, rather than a JRE. The supported combinations ar
 | --- | --- | --- |
 | CLI | JDK 17, 21, and 25 | JDK 17, 21, and 25 |
 | Maven plugin | Maven 3.9.x on JDK 17, 21, or 25 | Maven 3.9.0 and 3.9.16 on each JDK |
-| Gradle plugin | Gradle 8.14.x on JDK 17/21; Gradle 9.8.x on JDK 17/21/25 | Gradle 8.14.5 and 9.8.0 |
+| Gradle plugin | Gradle 8.14.x on JDK 17/21; Gradle 9.8.x on JDK 17/21/25 | Gradle 8.14.5 and 9.8.1 |
 
 Java 17 and Maven 3.9.0 are enforced by the build and Maven plugin metadata.
-The wrapper uses Gradle 9.8.0. Gradle 8.14 does not run on JDK 25; use Gradle
+The wrapper uses Gradle 9.8.1. Gradle 8.14 does not run on JDK 25; use Gradle
 9.8.x for that combination. Linux and Windows are covered by CI. Other versions
 and operating systems may work but are outside the v1 support commitment.
 
@@ -56,7 +56,8 @@ must preserve correct existing configurations and report consumers. Human-readab
 text is intended for people and is not a stable machine schema.
 
 The v1 TOON contract is fixed by the JToon 2.0.4 empty and populated report
-fixtures. An incompatible upstream encoding change requires a cognitive-java
+fixtures. The selected JToon 2.0.5 dependency reproduces those unchanged fixtures.
+An incompatible upstream encoding change requires a cognitive-java
 major version. See [Migrating from 0.7.1 to 1.0.0](MIGRATING.md) and
 [dependency selection](DEPENDENCIES.md).
 
