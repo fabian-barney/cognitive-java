@@ -38,8 +38,8 @@ class ReportFormatterTest {
 
     @Test
     void jsonRoundTripsUnicodeControlCharactersAndIntegerBoundaries() throws Exception {
-        String method = "mÃƒÆ’Ã‚Â©thode\"\\\n\t";
-        String source = "src/GrÃƒÆ’Ã‚Â¼ÃƒÆ’Ã…Â¸e\\Example.java";
+        String method = "méthode\"\\\n\t";
+        String source = "src/Grüße\\Example.java";
         CognitiveReport report = CognitiveReport.from(List.of(
                 metric(method, "demo.Unicode", source, 1, Integer.MAX_VALUE, Integer.MAX_VALUE)),
                 Integer.MAX_VALUE);
@@ -59,8 +59,8 @@ class ReportFormatterTest {
 
     @Test
     void junitRoundTripsEscapingAndKeepsDeclarationAttributeOrderAndTime() throws Exception {
-        String method = "mÃƒÆ’Ã‚Â©thode<&\"";
-        String source = "src/GrÃƒÆ’Ã‚Â¼ÃƒÆ’Ã…Â¸e<&\".java";
+        String method = "méthode<&\"";
+        String source = "src/Grüße<&\".java";
         CognitiveReport report = CognitiveReport.from(List.of(
                 metric(method, "demo.Unicode", source, 1, 2, 9)), 8).withElapsedNanos(123_456_789);
 
