@@ -1,46 +1,53 @@
-# Dependency selection for v1
+# Dependency selection for the next major release
 
-The release refresh retains a full-JDK 17 runtime floor and Java 17 bytecode.
-JToon and its Jackson 3 dependencies require Java 17; the directly used Jackson 2
-report APIs fit that floor. Maven APIs remain in the supported Maven 3.9 line.
+This unreleased baseline implements issue #118, assessed on 2026-10-17.
+The previous Java 17 and v1 reporting constraints are superseded on `main`;
+the published 1.0.0 contract remains documented in MIGRATING.md.
 
-## Selected versions
+## Runtime and build compatibility
+
+Support full JDK 21 and 25 with Java 21 bytecode. JToon 3.0.0 requires Java 21,
+Jackson 3.2.3 requires Java 17, and JSpecify 1.0.1 requires Java 8. Their runtime
+constraint intersection is Java 21 or newer. Error Prone requires a build JDK >=21.
+Java 17 retirement is intentional project policy; it is not universally EOL.
+
+Use Maven 3.9.16 or 3.10.0; primary CI/release builds pin 3.10.0. Maven provided
+APIs remain at 3.9.16 for consumers on both maintained lines. Gradle 8.14.6 is
+supported on JDK 21 and Gradle 9.8.1 on JDK 21/25. The wrapper stays on 9.8.1.
+Gradle 8.14.6 fixes three published high-rated vulnerabilities. Maven 4 and its
+plugin prereleases are excluded; Java 27 remains unverified.
+
+## Selected dependencies
 
 | Component | Version | Decision |
 | --- | --- | --- |
-| JToon | 2.0.5 | Latest Java 17-compatible release; preserve the frozen v1 TOON encoding |
-| Jackson BOM | 2.22.3 | Current stable 2.x; preserve the existing JSON/XML renderer APIs |
-| crap-java gate | 1.0.1 | Current stable release with the existing strict threshold |
-| NullAway | 0.14.2 | Current stable; verify with Error Prone on JDK 25 |
-| SpotBugs | 4.10.4 | Validated analyzer; newer engines require quality-output verification |
-| SpotBugs Maven plugin | 4.10.4.1 | Retain the validated analyzer integration pending that verification |
-| SpotBugs Gradle plugin | 6.5.11 | Current stable integration |
-| Error Prone Gradle plugin | 5.1.1 | Current stable integration |
-| Maven API | 3.9.16 | Latest stable supported Maven line |
-| Maven Enforcer | 3.6.3 | Enforce Java 17 and Maven 3.9.0 minimums |
-| Gradle wrapper | 9.8.1 | Current stable, with trusted distribution checksum |
-| CycloneDX Maven plugin | 2.9.3 | Generate component SBOMs using schema 1.6 |
-| CycloneDX Gradle plugin | 3.4.1 | Inventory the resolved Gradle runtime dependencies |
-| Maven AntRun plugin | 3.2.0 | Package the exact project license in release archives |
+| JToon | 3.0.0 | Current Java 21 line; review next-major TOON semantics |
+| Jackson BOM / implementations | 3.2.3 | One implementation family shared with JToon |
+| Jackson annotations | 2.22 | Shared upstream namespace intentionally remains com.fasterxml.jackson |
+| Woodstox / stax2-api | 7.3.0 / 4.3.2 | Explicitly align Maven and Gradle XML runtimes |
+| crap-java | 2.0.0 | Published Java 21 gate; retain strict thresholds |
+| SpotBugs engine / Maven plugin | 4.10.5 / 4.10.5.0 | Fix valid new findings |
+| SpotBugs Gradle plugin | 6.5.13 | Current integration |
+| Gradle Plugin Publish | 2.2.1 | Verify signed publication locally without upload |
+| CycloneDX Gradle plugin | 3.5.1 | Verify runtime inventories and schema 1.6 |
+| Maven Plugin Tools / annotations | 3.16.0 | Stable Maven 3 tooling |
+| Central Publishing | 0.12.0 | Verify Maven credential origins and signatures |
+| Maven Dependency | 3.11.0 | Prepare complete offline CI dependency cache |
+| Clean / Resources | 3.5.0 / 3.5.0 | Pin lifecycle defaults independently of installed Maven |
+| Install / Deploy | 3.2.0 / 3.2.0 | Pin lifecycle defaults |
+| setup-java | 6.1.0 | Immutable SHA pin; explicit credential-origin and environment-name inputs |
 
-JToon's separately named `tools.jackson` 3.x APIs can coexist with the
-`com.fasterxml.jackson` 2.x report renderer. Migrating the report renderer to
-Jackson 3 is deferred because it changes APIs without improving the v1 contract.
+Jackson 2.22 is still maintained. Consolidation removes duplicate implementations
+rather than responding to an EOL. Jackson 3.2.3 aligns with JToon's selected line
+and the sibling crap-java migration; shared annotations are not Jackson 2 runtime
+implementation classes.
 
-JToon 2.0.6 through 2.0.8 and 3.0.0 ship Java 21 bytecode and are incompatible with the
-Java 17 consumer floor. JToon 2.0.5 retains Java 17 bytecode and passes the
-unchanged report-format contract fixtures; newer absolute versions are deferred.
-The 2026-10-17 scan verified class-file major 65 in the published 2.0.8 and
-3.0.0 JARs; these releases do not justify raising the public Java 17 floor.
+Retain current JUnit 6.1.3, JSpecify 1.0.1, Error Prone 2.50.0, NullAway 0.14.2,
+JaCoCo 0.8.15, Enforcer 3.6.3, Compiler 3.16.0, Surefire 3.6.0, JAR 3.5.1,
+Shade 3.6.2, Antrun 3.2.0, Source 3.4.0, Javadoc 3.12.0, GPG 3.2.8,
+Invoker 3.10.1, CycloneDX Maven 2.9.3, and Error Prone Gradle 5.1.1.
+Fixture versions are filtered from the parent; Gradle reads the parent's JaCoCo version.
+Current checkout/artifact/Gradle/attest Action pins are retained.
 
-JUnit 6.1.3, JSpecify 1.0.1, Error Prone 2.50.0, JaCoCo 0.8.15, Maven Surefire
-3.6.0, Javadoc 3.12.0, GPG 3.2.8, Shade 3.6.2, and Invoker 3.10.1 remain
-compatible stable choices. Central Publishing stays on the validated 0.11.0
-release path; 0.11.1 and 0.12.0 require separate nonpublishing signing and
-publication preflight verification. Compiler 3.16.0,
-Source 3.4.0, JAR 3.5.1, and Plugin Tools 3.15.2 select stable Maven 3-compatible
-lines; upstream Maven 4 beta and release-candidate tooling is excluded.
-
-Runtime/build dependency metadata and upstream license files must be checked
-when changing these choices. Bundled third-party license and notice contents are
-validated as part of release packaging.
+Exact selected licenses and dependency advisories are recorded in BUILD_TOOLING_AUDIT.md.
+Runtime inventories and archive notices are verified from fresh build output.

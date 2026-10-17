@@ -7,6 +7,11 @@ and GitHub attestations are all public and verified.
 
 ## Access and prerequisites
 
+Use a patched full JDK 21 or 25 and Maven 3.9.16 or newer. The protected
+workflows pin JDK 21 and checksum-verified Maven 3.10.0. Maven, Gradle, and
+shell signatures reuse the isolated imported `GNUPGHOME`; Gradle uses native
+GPG signing with the passphrase supplied through stdin.
+
 The releaser needs repository-owner access and GitHub CLI authentication for
 preparation and recovery work. CI owns the private signing key whose
 fingerprint is `E6BB1FB6EE83EEAB7B408C6B5CA409BD8EE61724`; maintainers do not need to

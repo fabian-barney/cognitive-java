@@ -53,18 +53,18 @@ and the tagged source commit; the release runbook provides the exact commands.
 
 ## License audit
 
-The project is Apache-2.0. JToon is MIT; stax2-api is BSD-2-Clause; Jackson 2/3
+The project is Apache-2.0. JToon is MIT; stax2-api is BSD-2-Clause; Jackson 3
 and Woodstox are Apache-2.0. Their resolved versions and available license
 metadata appear in the SBOMs. Jackson also bundles FastDoubleParser and Schubfach
 code, whose license files and notices must survive shading.
 
-The curated license copies come from the tagged [JToon 2.0.5 license](https://github.com/toon-format/toon-java/blob/v2.0.5/LICENSE)
-and [stax2-api 4.3.0 license](https://github.com/FasterXML/stax2-api/blob/stax2-api-4.3.0/LICENSE).
+The curated license copies come from the tagged [JToon 3.0.0 license](https://github.com/toon-format/toon-java/blob/v3.0.0/LICENSE)
+and [stax2-api 4.3.2 license](https://github.com/FasterXML/stax2-api/blob/stax2-api-4.3.2/LICENSE).
 The latter provides the full BSD terms missing from its packaged license stub.
 
 All binary, source, and Javadoc artifact families include the project license.
 The CLI retains uniquely named JToon and stax2-api license copies, the three
-Jackson parser license resources, and merged Jackson 2/3 notices. CI checks
+Jackson parser license resources, and merged Jackson 3 notices. CI checks
 license bytes, required attributions, and duplicate legal entries rather than
 relying solely on POM metadata.
 

@@ -4,10 +4,80 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.StringReader;
 import java.util.List;
+import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.jupiter.api.Test;
+import org.xml.sax.InputSource;
+import tools.jackson.databind.json.JsonMapper;
 
 class ReportFormatterTest {
+
+    @Test
+    void jsonPreservesFieldOrderWhitespaceAndTrailingNewline() {
+        CognitiveReport report = CognitiveReport.from(List.of(
+                metric("low", "demo.Low", "src/main/java/demo/Low.java", 4, 6, 2)), 8);
+
+        assertEquals("""
+                {
+                  "status": "passed",
+                  "threshold": 8,
+                  "methods": [
+                    {
+                      "status": "passed",
+                      "cc": 2,
+                      "method": "low",
+                      "src": "src/main/java/demo/Low.java",
+                      "lineStart": 4,
+                      "lineEnd": 6
+                    }
+                  ]
+                }
+                """, ReportFormatter.format(report, ReportFormat.JSON, false, false, false));
+    }
+
+    @Test
+    void jsonRoundTripsUnicodeControlCharactersAndIntegerBoundaries() throws Exception {
+        String method = "mÃƒÆ’Ã‚Â©thode\"\\\n\t";
+        String source = "src/GrÃƒÆ’Ã‚Â¼ÃƒÆ’Ã…Â¸e\\Example.java";
+        CognitiveReport report = CognitiveReport.from(List.of(
+                metric(method, "demo.Unicode", source, 1, Integer.MAX_VALUE, Integer.MAX_VALUE)),
+                Integer.MAX_VALUE);
+
+        var json = JsonMapper.builder().build().readTree(
+                ReportFormatter.format(report, ReportFormat.JSON, false, true, false));
+
+        assertEquals(Integer.MAX_VALUE, json.get("threshold").intValue());
+        var entry = json.get("methods").get(0);
+        assertEquals(method, entry.get("method").stringValue());
+        assertEquals(source, entry.get("src").stringValue());
+        assertEquals(Integer.MAX_VALUE, entry.get("cc").intValue());
+        assertEquals(Integer.MAX_VALUE, entry.get("lineEnd").intValue());
+        assertFalse(entry.has("status"));
+        assertFalse(json.has("exclusions"));
+    }
+
+    @Test
+    void junitRoundTripsEscapingAndKeepsDeclarationAttributeOrderAndTime() throws Exception {
+        String method = "mÃƒÆ’Ã‚Â©thode<&\"";
+        String source = "src/GrÃƒÆ’Ã‚Â¼ÃƒÆ’Ã…Â¸e<&\".java";
+        CognitiveReport report = CognitiveReport.from(List.of(
+                metric(method, "demo.Unicode", source, 1, 2, 9)), 8).withElapsedNanos(123_456_789);
+
+        String xml = ReportFormatter.format(report, ReportFormat.JUNIT, false, false, false);
+        var factory = DocumentBuilderFactory.newInstance();
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        var document = factory.newDocumentBuilder().parse(new InputSource(new StringReader(xml)));
+        var testcase = (org.w3c.dom.Element) document.getElementsByTagName("testcase").item(0);
+
+        assertTrue(xml.startsWith("<?xml version='1.0' encoding='UTF-8'?>"));
+        assertTrue(xml.indexOf("tests=\"1\"") < xml.indexOf("failures=\"1\""));
+        assertTrue(xml.endsWith("\n"));
+        assertEquals("0.123457", document.getDocumentElement().getAttribute("time"));
+        assertEquals(source, testcase.getAttribute("file"));
+        assertEquals(method + ":1 [CC=9]", testcase.getAttribute("name"));
+        assertTrue(document.getElementsByTagName("failure").item(0).getTextContent().contains(method));
+    }
 
     @Test
     void emptyToonReportUsesCanonicalArrayEncoding() {
@@ -18,7 +88,7 @@ class ReportFormatterTest {
     }
 
     @Test
-    void populatedToonReportPreservesV1ColumnsAndValues() {
+    void populatedToonReportPreservesColumnsAndValues() {
         assertEquals("""
                 status: failed
                 threshold: 8

@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Require a full JDK 21 or 25 and emit Java 21 bytecode; retire Java 17 support.
+- Require Maven 3.9.16 or newer; verify Maven 3.9.16/3.10.0 and Gradle 8.14.6/9.8.1.
+- Adopt JToon 3.0.0 semantics and consolidate reporting on Jackson 3.2.3 while preserving
+  JSON/JUnit field meanings, formatting, CLI exit codes, and plugin configuration.
+
+### Changed
+
+- Upgrade crap-java to 2.0.0, SpotBugs to 4.10.5, and selected build/publication plugins.
+- Align fixture versions, published JVM metadata, archive contracts, and legal/SBOM verification.
+- Pin checksum-verified Maven installations and migrate setup-java 6 credential origins and signing.
+- Verify NullAway on both supported JDK lines and document the fresh dependency advisory audit.
+
 ## 1.0.0 - 2026-10-03
 
 ### Added

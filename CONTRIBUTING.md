@@ -20,6 +20,9 @@ All changes in this repository are expected to be issue-linked.
 
 ## Local Validation
 
+Use a patched full JDK 21 or 25 and Maven 3.9.16 or newer. CI and release builds
+use JDK 21 with checksum-verified Maven 3.10.0.
+
 Run the repository-standard Maven verification:
 
 ```bash
@@ -70,8 +73,9 @@ reactor. CI runs those separate gates for every production module before merge.
 
 The build workflow now validates:
 
-- Maven `3.9.0` and `3.9.16` verification on JDK `17`, `21`, and `25`, on Linux and Windows
-- Gradle `8.14.5` on JDK `17`/`21` and `9.8.1` on JDK `17`/`21`/`25`, on Linux and Windows
+- Maven `3.9.16` and `3.10.0` verification on JDK `21` and `25`, on Linux and Windows
+- Gradle `8.14.6` on JDK `21` and `9.8.1` on JDK `21`/`25`, on Linux and Windows
+- Error Prone/NullAway on both supported JDK lines
 - signed publication preflight, reproducible archives, SBOM contracts, and release controls
 - the required `verify / required` aggregate check
 - uploaded JUnit sidecars from the self-hosted `verify / quality-cognitive-*` scans
