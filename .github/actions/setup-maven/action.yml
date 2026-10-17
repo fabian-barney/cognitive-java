@@ -20,11 +20,20 @@ runs:
           *) echo "Unsupported Maven version: $MAVEN_VERSION" >&2; exit 1 ;;
         esac
         archive="apache-maven-${MAVEN_VERSION}-bin.tar.gz"
-        installation_root="$(mktemp -d "${RUNNER_TEMP}/cognitive-java-maven.XXXXXX")"
+        runner_temp="$RUNNER_TEMP"
+        if command -v cygpath >/dev/null 2>&1; then
+          runner_temp="$(cygpath -u "$RUNNER_TEMP")"
+        fi
+        installation_root="$(mktemp -d "${runner_temp}/cognitive-java-maven.XXXXXX")"
         curl --fail --location --silent --show-error --retry 3 --retry-all-errors \
           --output "${installation_root}/${archive}" \
           "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/${archive}"
         echo "${expected_sha512}  ${installation_root}/${archive}" | sha512sum --check --status
         tar -xzf "${installation_root}/${archive}" -C "$installation_root"
-        echo "${installation_root}/apache-maven-${MAVEN_VERSION}/bin" >> "$GITHUB_PATH"
+        maven_bin="${installation_root}/apache-maven-${MAVEN_VERSION}/bin"
+        if command -v cygpath >/dev/null 2>&1; then
+          echo "$(cygpath -w "$maven_bin")" >> "$GITHUB_PATH"
+        else
+          echo "$maven_bin" >> "$GITHUB_PATH"
+        fi
         "${installation_root}/apache-maven-${MAVEN_VERSION}/bin/mvn" --version
