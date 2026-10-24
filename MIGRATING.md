@@ -7,11 +7,11 @@ Java 17 is no longer supported. This is a project support decision, not a claim
 that all Java 17 vendors have ended support. Parsing still requires `jdk.compiler`
 and accepts the running JDK's supported non-preview syntax.
 
-Use Maven 3.9.16 or 3.10.0, Gradle 8.14.6 on JDK 21, or Gradle 9.8.1 on JDK 21/25.
+Use Maven 3.9.16 or 3.10.0, Gradle 8.14.6 on JDK 21, or Gradle 9.8.2 on JDK 21/25.
 Maven 4 and non-LTS JDKs are outside the support commitment. Use current security
 patches within supported JDK lines.
 
-JToon advances to 3.0.0 and reporting uses Jackson 3.2.3 throughout. Review TOON
+JToon advances to 3.0.0 and reporting uses Jackson 3.2.4 throughout. Review TOON
 encoding changes and downstream snapshots before upgrading; the canonical empty
 and populated examples below still pass. JSON and JUnit field meanings, ordering,
 null omission, escaping, thresholds, exclusions, sidecars, and CLI exit codes

@@ -26,10 +26,10 @@ with the `jdk.compiler` module, rather than a JRE. The supported combinations ar
 | --- | --- | --- |
 | CLI | JDK 21 and 25 | JDK 21 and 25 |
 | Maven plugin | Maven 3.9.x (minimum 3.9.16) and 3.10.x on JDK 21/25 | Maven 3.9.16 and 3.10.0 on each JDK |
-| Gradle plugin | Gradle 8.14.x (minimum 8.14.6) on JDK 21; Gradle 9.8.x on JDK 21/25 | Gradle 8.14.6 and 9.8.1 |
+| Gradle plugin | Gradle 8.14.x (minimum 8.14.6) on JDK 21; Gradle 9.8.x on JDK 21/25 | Gradle 8.14.6 and 9.8.2 |
 
 Java 21 and Maven 3.9.16 are enforced by the build and Maven plugin metadata.
-The wrapper uses Gradle 9.8.1. Gradle 8.14 does not run on JDK 25; use Gradle
+The wrapper uses Gradle 9.8.2. Gradle 8.14 does not run on JDK 25; use Gradle
 9.8.x for that combination. Linux and Windows are covered by CI. Other versions
 and operating systems may work but are outside the support commitment.
 

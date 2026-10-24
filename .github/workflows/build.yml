@@ -918,7 +918,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, windows-latest ]
-        gradle: [ "8.14.6", "9.8.1" ]
+        gradle: [ "8.14.6", "9.8.2" ]
         java: [ "21", "25" ]
         exclude:
           - gradle: "8.14.6"
