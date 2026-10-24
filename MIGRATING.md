@@ -11,7 +11,7 @@ Use Maven 3.9.16 or 3.10.0, Gradle 8.14.6 on JDK 21, or Gradle 9.8.2 on JDK 21/2
 Maven 4 and non-LTS JDKs are outside the support commitment. Use current security
 patches within supported JDK lines.
 
-JToon advances to 3.0.0 and reporting uses Jackson 3.2.3 throughout. Review TOON
+JToon advances to 3.0.0 and reporting uses Jackson 3.2.4 throughout. Review TOON
 encoding changes and downstream snapshots before upgrading; the canonical empty
 and populated examples below still pass. JSON and JUnit field meanings, ordering,
 null omission, escaping, thresholds, exclusions, sidecars, and CLI exit codes
