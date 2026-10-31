@@ -45,7 +45,7 @@ implementation classes.
 Retain current JUnit 6.1.3, JSpecify 1.0.1, Error Prone 2.51.0, NullAway 0.14.3,
 JaCoCo 0.8.16, Enforcer 3.7.0, Compiler 3.16.0, Surefire 3.6.1, JAR 3.5.1,
 Shade 3.6.2, Antrun 3.2.0, Source 3.4.0, Javadoc 3.12.0, GPG 3.2.8,
-Invoker 3.10.1, CycloneDX Maven 2.9.3, and Error Prone Gradle 5.1.1.
+Invoker 3.10.1, CycloneDX Maven 2.9.3, and Error Prone Gradle 5.2.0.
 Fixture versions are filtered from the parent; Gradle reads the parent's JaCoCo version.
 Current checkout/artifact/Gradle/attest Action pins are retained.
 

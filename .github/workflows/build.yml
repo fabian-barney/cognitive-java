@@ -248,7 +248,7 @@ jobs:
           path: ~/.m2/repository
 
       - name: Build core jar for gradle-plugin gate
-        run: mvn -B -ntp -P!quality-gates-all -pl core -am -DskipTests package
+        run: mvn --version && mvn -B -ntp -P!quality-gates-all -pl core -am -DskipTests package
 
       - name: Resolve crap-java CLI
         shell: bash
@@ -565,7 +565,7 @@ jobs:
           path: ~/.m2/repository
 
       - name: Build core jar for NullAway gate
-        run: mvn -B -ntp -P!quality-gates-all -pl core -am -DskipTests package
+        run: mvn --version && mvn -B -ntp -P!quality-gates-all -pl core -am -DskipTests package
 
       - name: Set up Gradle wrapper permissions
         run: chmod +x gradle-plugin/gradlew
@@ -944,7 +944,7 @@ jobs:
           gradle-version: ${{ matrix.gradle }}
 
       - name: Build Java 21 core artifact
-        run: mvn -B -ntp -P!quality-gates-all -pl core -am -DskipTests package
+        run: mvn --version && mvn -B -ntp -P!quality-gates-all -pl core -am -DskipTests package
 
       - name: Verify Windows wrapper exit codes
         if: runner.os == 'Windows'
