@@ -928,9 +928,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install Maven 3.10.0
-        uses: ./.github/actions/setup-maven
-
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
@@ -942,6 +939,9 @@ jobs:
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           gradle-version: ${{ matrix.gradle }}
+
+      - name: Install Maven 3.10.0
+        uses: ./.github/actions/setup-maven
 
       - name: Build Java 21 core artifact
         run: mvn --version && mvn -B -ntp -P!quality-gates-all -pl core -am -DskipTests package
@@ -978,9 +978,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Maven 3.10.0
-        uses: ./.github/actions/setup-maven
-
       - name: Set up JDK 21
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
@@ -990,6 +987,9 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - name: Install Maven 3.10.0
+        uses: ./.github/actions/setup-maven
 
       - name: Compare two clean release builds
         shell: bash
