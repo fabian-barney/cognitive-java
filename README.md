@@ -30,7 +30,7 @@ with the `jdk.compiler` module, rather than a JRE. The supported combinations ar
 
 Java 21 and Maven 3.9.16 are enforced by the build and Maven plugin metadata.
 The wrapper uses Gradle 9.9.1. Gradle 8.14 does not run on JDK 25; use Gradle
-9.8.x or 9.8.x or 9.9.x for that combination. Linux and Windows are covered by CI. Other versions
+9.8.x or 9.9.x for that combination. Linux and Windows are covered by CI. Other versions
 and operating systems may work but are outside the support commitment.
 
 The parser uses the running JDK's javac syntax support. Run on a JDK that
