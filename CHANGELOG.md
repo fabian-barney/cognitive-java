@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 2.0.2 - 2026-11-15
+
+### Fixed
+
+- Allow about 20 minutes for public registry artifact availability during release
+  verification, retaining signature, byte-identity, consumer, and attestation checks.
+
+### Publishing
+
+- Complete the maintenance changes prepared for 2.0.1 after its registry verification
+  timed out during Central availability delays. Preserve the signed `v2.0.1` tag,
+  public registry artifacts, and remaining GitHub draft as a partial-release record.
+
 ## 2.0.1 - 2026-11-15
 
 ### Changed
@@ -15,6 +28,12 @@
 
 Public CLI options, plugin configuration, report contracts, and runtime minimums
 remain unchanged.
+
+### Publishing
+
+- Registry artifacts became public, but verification timed out waiting for the
+  Gradle implementation POM on Central. GitHub assets and attestations were not
+  published; retain `v2.0.1` and the GitHub draft as a partial-release record.
 
 ## 2.0.0 - 2026-10-17
 

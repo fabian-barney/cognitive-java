@@ -112,6 +112,10 @@ not contain the preceding stable tag.
 
 ## Verify publication
 
+Registry downloads retry up to 80 times at 15-second intervals (about 20 minutes)
+to allow for delayed public availability after an accepted upload. Signatures,
+byte comparisons, consumers, and attestations must still verify before promotion.
+
 The GitHub Release must be non-draft, marked latest when appropriate, and point
 to the same commit as the signed tag. It must contain exactly the executable
 CLI JAR, four CycloneDX JSON SBOMs, `SHA256SUMS`, `SHA512SUMS`, and a detached
