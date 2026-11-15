@@ -13,7 +13,7 @@ Java 17 retirement is intentional project policy; it is not universally EOL.
 
 Use Maven 3.9.16 or 3.10.0; primary CI/release builds pin 3.10.0. Maven provided
 APIs remain at 3.9.16 for consumers on both maintained lines. Gradle 8.14.6 is
-supported on JDK 21 and Gradle 9.8.2 on JDK 21/25. The wrapper stays on 9.8.2.
+supported on JDK 21 and Gradle 9.8.2/9.9.1 on JDK 21/25. The wrapper uses Gradle 9.9.1.
 Gradle 8.14.6 fixes three published high-rated vulnerabilities. Maven 4 and its
 plugin prereleases are excluded; Java 27 remains unverified.
 
@@ -35,14 +35,14 @@ plugin prereleases are excluded; Java 27 remains unverified.
 | Maven Dependency | 3.11.0 | Prepare complete offline CI dependency cache |
 | Clean / Resources | 3.5.0 / 3.5.0 | Pin lifecycle defaults independently of installed Maven |
 | Install / Deploy | 3.2.0 / 3.2.0 | Pin lifecycle defaults |
-| setup-java | 6.1.0 | Immutable SHA pin; explicit credential-origin and environment-name inputs |
+| setup-java | 6.3.0 | Immutable SHA pin; explicit credential-origin, environment-name and problem-matcher inputs |
 
 Jackson 2.22 is still maintained. Consolidation removes duplicate implementations
 rather than responding to an EOL. Jackson 3.2.4 aligns with JToon's selected line
 and the sibling crap-java migration; shared annotations are not Jackson 2 runtime
 implementation classes.
 
-Retain current JUnit 6.1.3, JSpecify 1.0.1, Error Prone 2.51.0, NullAway 0.14.3,
+Retain current JUnit 6.1.3, JSpecify 1.0.1, Error Prone 2.52.0, NullAway 0.14.3,
 JaCoCo 0.8.16, Enforcer 3.7.0, Compiler 3.16.0, Surefire 3.6.1, JAR 3.5.1,
 Shade 3.6.2, Antrun 3.2.0, Source 3.4.0, Javadoc 3.12.0, GPG 3.2.8,
 Invoker 3.10.1, CycloneDX Maven 2.9.3, and Error Prone Gradle 5.2.0.
