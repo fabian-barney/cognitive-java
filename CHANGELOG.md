@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 2.0.1 - 2026-11-15
+
+### Changed
+
+- Refresh compatible dependencies, including Jackson 3.2.4, Error Prone 2.52.0,
+  NullAway 0.14.3, JaCoCo 0.8.16, Enforcer 3.7.0, and Surefire 3.6.1.
+- Advance the Gradle wrapper to 9.9.1 and verify Gradle 8.14.6, 9.8.2, and 9.9.1
+  within the existing JDK 21/25 and Maven 3.9.16/3.10.0 support policy.
+- Refresh pinned setup-java and Gradle Actions, preserve compiler problem matchers,
+  and retain the selected Maven installation after Gradle setup in CI.
+
+Public CLI options, plugin configuration, report contracts, and runtime minimums
+remain unchanged.
+
 ## 2.0.0 - 2026-10-17
 
 ### Breaking changes

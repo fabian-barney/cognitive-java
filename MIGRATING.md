@@ -1,5 +1,15 @@
 # Migration guide
 
+## Migrating from 2.0.0 to 2.0.1 (2026-11-15)
+
+Update CLI filenames, Maven coordinates, and the Gradle plugin version to
+`2.0.1` together. No configuration or report-consumer changes are required.
+The Java 21/25 runtime policy, Maven 3.9.16 minimum, and Gradle 8.14.6 lower
+boundary remain unchanged. The wrapper uses Gradle 9.9.1; Gradle 9.8.2 remains
+a tested supported sample. Compatible dependency updates include Jackson 3.2.4.
+
+The dated sections below preserve the earlier release migration guidance.
+
 ## Migrating from 1.0.0 to 2.0.0 (2026-10-17)
 
 Version 2.0.0 requires a full JDK 21 or 25 and emits Java 21 bytecode.
