@@ -14,7 +14,7 @@ central_base="https://repo.maven.apache.org/maven2/media/barney"
 download_with_retry() {
   local url="$1"
   local destination="$2"
-  local attempts=40
+  local attempts=80
   local delay_seconds=15
   for ((attempt = 1; attempt <= attempts; attempt++)); do
     if curl --fail --location --silent --show-error \
