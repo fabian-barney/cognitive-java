@@ -51,10 +51,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Build
@@ -90,10 +91,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -131,10 +133,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -161,10 +164,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -198,10 +202,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -235,10 +240,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -287,10 +293,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -327,10 +334,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -364,10 +372,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -401,10 +410,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -438,10 +448,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -482,10 +493,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -517,10 +529,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -552,10 +565,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -593,10 +607,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -627,10 +642,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -658,10 +674,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -689,10 +706,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -726,10 +744,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Download Maven repository
@@ -779,10 +798,11 @@ jobs:
         uses: ./.github/actions/setup-maven
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
           mvn-server-repository-origins: central:https://central.sonatype.com
           server-id: central
@@ -882,10 +902,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
+          problem-matcher: true
 
       - name: Install Maven ${{ matrix.maven }}
         uses: ./.github/actions/setup-maven
@@ -929,10 +950,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
+          problem-matcher: true
           cache: maven
 
       - name: Set up Gradle ${{ matrix.gradle }}
@@ -979,10 +1001,11 @@ jobs:
           fetch-depth: 0
 
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
+          problem-matcher: true
           cache: maven
 
       - name: Set up Gradle

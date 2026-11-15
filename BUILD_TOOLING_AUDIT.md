@@ -1,5 +1,14 @@
 # Dependency and build-tool audit
 
+## Maintenance refresh — 2026-11-14
+
+Error Prone 2.52.0 remains a build-only analyzer. Gradle 9.9.1 becomes the wrapper
+and joins 9.8.2 as an upper tested sample, so the 9.8.x support claim, the 8.14.6
+lower boundary and the Maven 3.9.16 API floor remain unchanged. setup-java 6.3.0
+makes its problem matcher opt-in; every setup step enables it explicitly to keep
+compiler annotations. Jackson BOM 3.2.4 and CycloneDX Gradle 3.5.1 are retained;
+issue #127 records why their upgrades were rejected.
+
 ## Maintenance refresh — 2026-10-24
 
 Jackson implementations are aligned by BOM 3.2.4 (Java 17 minimum); JToon remains
