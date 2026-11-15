@@ -1,6 +1,7 @@
-# Dependency selection for cognitive-java 2.0.0
+# Dependency selection for cognitive-java 2.0.1
 
-This release baseline implements issue #118, assessed on 2026-10-17.
+This maintenance release retains the Java 21 baseline established in issue #118
+on 2026-10-17 and includes the compatible updates from issues #123, #125, and #127.
 The previous Java 17 and v1 reporting constraints are superseded on `main`;
 the published 1.0.0 contract remains documented in MIGRATING.md.
 

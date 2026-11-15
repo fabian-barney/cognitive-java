@@ -16,7 +16,7 @@ with no direct Java binary or source compatibility guarantee.
 
 ## Requirements and support
 
-These requirements describe version 2.0.0.
+These requirements describe version 2.0.1.
 The published v1 support policy is retained in the historical migration guide.
 
 Artifacts contain Java 21-compatible bytecode. Analysis requires a full JDK
@@ -71,16 +71,16 @@ for signatures, provenance, and SBOM attestations.
 
 Published artifact:
 
-- `media.barney:cognitive-java-cli:2.0.0`
+- `media.barney:cognitive-java-cli:2.0.1`
 
-Run the shaded JAR after downloading it from [Maven Central](https://repo.maven.apache.org/maven2/media/barney/cognitive-java-cli/2.0.0/cognitive-java-cli-2.0.0.jar):
+Run the shaded JAR after downloading it from [Maven Central](https://repo.maven.apache.org/maven2/media/barney/cognitive-java-cli/2.0.1/cognitive-java-cli-2.0.1.jar):
 
 ```bash
-java -jar cognitive-java-cli-2.0.0.jar [args...]
+java -jar cognitive-java-cli-2.0.1.jar [args...]
 ```
 
-The [v2.0.0 GitHub release](https://github.com/fabian-barney/cognitive-java/releases/tag/v2.0.0)
-also ships [cognitive-java-2.0.0.jar](https://github.com/fabian-barney/cognitive-java/releases/download/v2.0.0/cognitive-java-2.0.0.jar)
+The [v2.0.1 GitHub release](https://github.com/fabian-barney/cognitive-java/releases/tag/v2.0.1)
+also ships [cognitive-java-2.0.1.jar](https://github.com/fabian-barney/cognitive-java/releases/download/v2.0.1/cognitive-java-2.0.1.jar)
 with identical executable bytes. Follow [artifact verification](RELEASE-ARTIFACTS.md)
 for signed checksums, detached signatures, SBOMs, and attestations.
 
@@ -109,13 +109,13 @@ Usage:
 Examples:
 
 ```bash
-java -jar cognitive-java-cli-2.0.0.jar
-java -jar cognitive-java-cli-2.0.0.jar --changed
-java -jar cognitive-java-cli-2.0.0.jar --format json --output target/cognitive-java/report.json
-java -jar cognitive-java-cli-2.0.0.jar --format none --junit-report target/cognitive-java/TEST-cognitive-java.xml
-java -jar cognitive-java-cli-2.0.0.jar --agent
-java -jar cognitive-java-cli-2.0.0.jar --threshold 12
-java -jar cognitive-java-cli-2.0.0.jar --exclude 'module-a/**' --exclude-class '(^|.*\\.)Dagger[^.]*$'
+java -jar cognitive-java-cli-2.0.1.jar
+java -jar cognitive-java-cli-2.0.1.jar --changed
+java -jar cognitive-java-cli-2.0.1.jar --format json --output target/cognitive-java/report.json
+java -jar cognitive-java-cli-2.0.1.jar --format none --junit-report target/cognitive-java/TEST-cognitive-java.xml
+java -jar cognitive-java-cli-2.0.1.jar --agent
+java -jar cognitive-java-cli-2.0.1.jar --threshold 12
+java -jar cognitive-java-cli-2.0.1.jar --exclude 'module-a/**' --exclude-class '(^|.*\\.)Dagger[^.]*$'
 ```
 
 ## Report Behavior
@@ -163,13 +163,13 @@ Custom source roots are resolved against the analysis root. Directory traversal 
 Published plugin:
 
 - plugin id `media.barney.cognitive-java`
-- version `2.0.0`
+- version `2.0.1`
 
 Apply the plugin:
 
 ```kotlin
 plugins {
-    id("media.barney.cognitive-java") version "2.0.0"
+    id("media.barney.cognitive-java") version "2.0.1"
 }
 ```
 
@@ -205,13 +205,13 @@ cognitiveJava {
 }
 ```
 
-Published releases work through the Gradle Plugin Portal without extra `pluginManagement` configuration. The marker publication is `media.barney.cognitive-java:media.barney.cognitive-java.gradle.plugin:2.0.0` and resolves to `media.barney:cognitive-java-gradle-plugin:2.0.0`.
+Published releases work through the Gradle Plugin Portal without extra `pluginManagement` configuration. The marker publication is `media.barney.cognitive-java:media.barney.cognitive-java.gradle.plugin:2.0.1` and resolves to `media.barney:cognitive-java-gradle-plugin:2.0.1`.
 
 ## Maven Plugin
 
 Published artifact:
 
-- `media.barney:cognitive-java-maven-plugin:2.0.0`
+- `media.barney:cognitive-java-maven-plugin:2.0.1`
 
 Bind the `check` goal:
 
@@ -221,7 +221,7 @@ Bind the `check` goal:
     <plugin>
       <groupId>media.barney</groupId>
       <artifactId>cognitive-java-maven-plugin</artifactId>
-      <version>2.0.0</version>
+      <version>2.0.1</version>
       <executions>
         <execution>
           <goals>
