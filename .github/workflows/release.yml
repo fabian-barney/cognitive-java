@@ -81,7 +81,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ needs.validate.outputs.commit }}
 
-      - name: Install Maven 3.10.0
+      - name: Install Maven 3.10.1
         uses: ./.github/actions/setup-maven
 
       - name: Fetch protected release source refs
